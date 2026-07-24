@@ -23,7 +23,25 @@ const detectFingerprints = (evidence) => {
 
         switch (fp.type) {
 
-            case "header":
+        case "header": {
+
+            const headerName = fp.header || "server";
+
+            const value = headers[headerName.toLowerCase()];
+
+            if (
+                value &&
+                value.toLowerCase().includes(fp.pattern.toLowerCase())
+            ) {
+
+                matched = true;
+                detectedBy = "Header";
+                foundEvidence = value;
+
+            }
+
+            break;
+        }
 
                 if (
                     headers.server &&
@@ -51,6 +69,24 @@ const detectFingerprints = (evidence) => {
 
                 break;
 
+            case "stylesheet": {
+
+                const stylesheet = stylesheets.find(style =>
+                    style &&
+                    style.toLowerCase().includes(fp.pattern.toLowerCase())
+                );
+
+                if (stylesheet) {
+
+                    matched = true;
+                    detectedBy = "Stylesheet";
+                    foundEvidence = stylesheet;
+
+                }
+
+                break;
+            }
+                
             case "html":
 
                 if (html.includes(fp.pattern)) {
@@ -60,6 +96,23 @@ const detectFingerprints = (evidence) => {
                 }
 
                 break;
+
+        case "cookie": {
+
+            const cookie = cookies.find(cookie =>
+                cookie.toLowerCase().includes(fp.pattern.toLowerCase())
+            );
+
+            if (cookie) {
+
+                matched = true;
+                detectedBy = "Cookie";
+                foundEvidence = cookie;
+
+            }
+
+            break;
+        }
 
             case "meta":
 
@@ -82,6 +135,8 @@ const detectFingerprints = (evidence) => {
                 break;
         }
 
+
+        
         if (matched) {
 
             detected.push({

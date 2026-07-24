@@ -1,5 +1,4 @@
 const { detectTechnology } = require("../services/recon/technology/technologyService");
-
 const technologyScan = async (req, res) => {
     try {
         const { domain } = req.body;
