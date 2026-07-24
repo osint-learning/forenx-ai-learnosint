@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Google Web Server",
+    "category": "Web Server",
+    "type": "header",
+    "pattern": "gws"
+  },
+  {
+    "name": "Apache",
+    "category": "Web Server",
+    "type": "header",
+    "pattern": "apache"
+  },
+  {
+    "name": "Nginx",
+    "category": "Web Server",
+    "type": "header",
+    "pattern": "nginx"
+  },
+  {
+    "name": "Microsoft IIS",
+    "category": "Web Server",
+    "type": "header",
+    "pattern": "iis"
+  },
+  {
+    "name": "LiteSpeed",
+    "category": "Web Server",
+    "type": "header",
+    "pattern": "litespeed"
+  }
+]

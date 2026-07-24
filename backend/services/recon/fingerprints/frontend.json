@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Next.js",
+    "category": "Frontend Framework",
+    "type": "script",
+    "pattern": "_next/"
+  },
+  {
+    "name": "React",
+    "category": "Frontend Framework",
+    "type": "html",
+    "pattern": "__REACT_DEVTOOLS_GLOBAL_HOOK__"
+  },
+  {
+    "name": "Vue.js",
+    "category": "Frontend Framework",
+    "type": "html",
+    "pattern": "__VUE__"
+  },
+  {
+    "name": "Angular",
+    "category": "Frontend Framework",
+    "type": "html",
+    "pattern": "ng-version"
+  },
+  {
+    "name": "Svelte",
+    "category": "Frontend Framework",
+    "type": "html",
+    "pattern": "__SVELTE__"
+  }
+]

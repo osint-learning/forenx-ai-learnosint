@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Google Analytics",
+    "category": "Analytics",
+    "type": "script",
+    "pattern": "gtag"
+  },
+  {
+    "name": "Google Tag Manager",
+    "category": "Analytics",
+    "type": "html",
+    "pattern": "GTM-"
+  },
+  {
+    "name": "Microsoft Clarity",
+    "category": "Analytics",
+    "type": "script",
+    "pattern": "clarity.ms"
+  },
+  {
+    "name": "Hotjar",
+    "category": "Analytics",
+    "type": "script",
+    "pattern": "hotjar"
+  }
+]
