@@ -7,6 +7,7 @@ const {
     websiteLookup,
     headerScan,
     sslScan,
+    robotsScan,
 } = require("../controllers/reconController");
 const {
     protect,
@@ -16,4 +17,5 @@ router.post("/domain", protect, domainLookup);
 router.post("/website", protect, websiteLookup);
 router.post("/headers", headerScan);
 router.post("/ssl", sslScan);
+router.post("/robots", robotsScan);
 module.exports = router;

@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const { getSecurityHeaders } = require("../services/recon/headerService");
 const { getSSLInfo } = require("../services/recon/sslService");
+const { getRobotsInfo } = require("../services/recon/robotsService");
 const {
     getDomainInfo,
     getWebsiteInfo,
@@ -75,9 +76,27 @@ const sslScan = asyncHandler(async (req, res) => {
         data,
     });
 });
+const robotsScan = asyncHandler(async (req, res) => {
+    const { domain } = req.body;
+
+    if (!domain) {
+        return res.status(400).json({
+            success: false,
+            message: "Domain is required",
+        });
+    }
+
+    const data = await getRobotsInfo(domain);
+
+    res.json({
+        success: true,
+        data,
+    });
+});
 module.exports = {
     domainLookup,
     websiteLookup,
     headerScan,
     sslScan,
+    robotsScan,
 };
