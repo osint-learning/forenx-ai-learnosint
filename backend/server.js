@@ -9,6 +9,7 @@ const dns = require("dns");
 
 const connectDB = require("./config/db");
 
+const metadataRoutes = require("./routes/metadataRoutes");
 // Fix MongoDB Atlas DNS resolution
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 

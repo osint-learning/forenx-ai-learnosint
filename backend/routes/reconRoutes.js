@@ -14,12 +14,14 @@ const {
     protect,
 } = require("../middleware/authMiddleware");
 const { technologyScan } = require("../controllers/technologyController");
+const { metadataScan } = require("../controllers/metadataController");
 
 router.post("/domain", protect, domainLookup);
 router.post("/website", protect, websiteLookup);
-router.post("/headers", headerScan);
-router.post("/ssl", sslScan);
-router.post("/robots", robotsScan);
-router.post("/technology", technologyScan);
-router.post("/fullscan", fullReconScan);
+router.post("/headers", protect, headerScan);
+router.post("/ssl", protect, sslScan);
+router.post("/robots", protect, robotsScan);
+router.post("/technology", protect, technologyScan);
+router.post("/metadata", protect, metadataScan);
+router.post("/fullscan", protect, fullReconScan);
 module.exports = router;
