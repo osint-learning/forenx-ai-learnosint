@@ -1,6 +1,4 @@
 const dns = require("dns").promises;
-const whois = require("whois-json");
-
 const getDomainInfo = async (domain) => {
     const result = {};
 
@@ -29,11 +27,6 @@ const getDomainInfo = async (domain) => {
         result.txtRecords = [];
     }
 
-    try {
-        result.whois = await whois(domain);
-    } catch {
-        result.whois = {};
-    }
 
     return result;
 };
