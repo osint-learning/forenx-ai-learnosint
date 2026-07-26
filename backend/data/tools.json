@@ -1,0 +1,157 @@
+[
+  {
+    "name": "WHOIS",
+    "category": "Domain Investigation",
+    "shortDescription": "Retrieve domain registration information.",
+    "description": "WHOIS provides details about domain ownership, registrar, registration dates, and name servers.",
+    "purpose": "Identify domain ownership and registration details.",
+    "whenToUse": "Use during domain reconnaissance.",
+    "difficulty": "Beginner",
+    "supportedPlatforms": ["Windows", "Linux", "macOS"],
+    "installation": "Most Linux systems include whois. Windows users can install a WHOIS client.",
+    "syntax": "whois example.com",
+    "commands": [
+      {
+        "title": "Basic Lookup",
+        "command": "whois example.com",
+        "explanation": "Displays WHOIS information for a domain."
+      }
+    ],
+    "examples": [
+      {
+        "title": "Lookup Google",
+        "command": "whois google.com",
+        "output": "Registrar, Creation Date, Expiry Date..."
+      }
+    ],
+    "sampleOutput": "Registrar: MarkMonitor Inc.",
+    "outputExplanation": "Displays ownership and registration information.",
+    "advantages": [
+      "Easy to use",
+      "Provides registration details"
+    ],
+    "limitations": [
+      "Privacy protection may hide owner information"
+    ],
+    "bestPractices": [
+      "Verify results with multiple sources"
+    ],
+    "tags": ["whois", "domain", "recon"],
+    "relatedTools": ["DNS Lookup"],
+    "icon": "",
+    "image": ""
+  },
+  {
+    "name": "DNS Lookup",
+    "category": "Domain Investigation",
+    "shortDescription": "Retrieve DNS records.",
+    "description": "Displays DNS records such as A, MX, NS, TXT, and CNAME.",
+    "purpose": "Gather DNS information.",
+    "whenToUse": "Use during domain enumeration.",
+    "difficulty": "Beginner",
+    "supportedPlatforms": ["Windows", "Linux", "macOS"],
+    "installation": "Uses nslookup or dig.",
+    "syntax": "nslookup example.com",
+    "commands": [
+      {
+        "title": "Lookup",
+        "command": "nslookup example.com",
+        "explanation": "Displays DNS records."
+      }
+    ],
+    "examples": [],
+    "sampleOutput": "",
+    "outputExplanation": "",
+    "advantages": [
+      "Fast",
+      "Built into most operating systems"
+    ],
+    "limitations": [],
+    "bestPractices": [],
+    "tags": ["dns"],
+    "relatedTools": ["WHOIS"],
+    "icon": "",
+    "image": ""
+  },
+  {
+    "name": "theHarvester",
+    "category": "Email Investigation",
+    "shortDescription": "Collect emails and subdomains.",
+    "description": "Searches public sources to discover email addresses, hosts, and subdomains.",
+    "purpose": "Email reconnaissance.",
+    "whenToUse": "Before penetration testing or OSINT investigations.",
+    "difficulty": "Intermediate",
+    "supportedPlatforms": ["Linux", "Windows"],
+    "installation": "pip install theHarvester",
+    "syntax": "theHarvester -d example.com -b bing",
+    "commands": [],
+    "examples": [],
+    "sampleOutput": "",
+    "outputExplanation": "",
+    "advantages": [
+      "Automates email discovery"
+    ],
+    "limitations": [
+      "Depends on public data availability"
+    ],
+    "bestPractices": [],
+    "tags": ["email", "osint"],
+    "relatedTools": ["Hunter.io"],
+    "icon": "",
+    "image": ""
+  },
+  {
+    "name": "Sherlock",
+    "category": "Username Investigation",
+    "shortDescription": "Find usernames across social media.",
+    "description": "Searches hundreds of websites for a username.",
+    "purpose": "Username investigation.",
+    "whenToUse": "Investigating online identities.",
+    "difficulty": "Beginner",
+    "supportedPlatforms": ["Windows", "Linux"],
+    "installation": "pip install sherlock-project",
+    "syntax": "sherlock username",
+    "commands": [],
+    "examples": [],
+    "sampleOutput": "",
+    "outputExplanation": "",
+    "advantages": [
+      "Supports many websites"
+    ],
+    "limitations": [
+      "May produce false positives"
+    ],
+    "bestPractices": [],
+    "tags": ["username"],
+    "relatedTools": ["Maigret"],
+    "icon": "",
+    "image": ""
+  },
+  {
+    "name": "VirusTotal",
+    "category": "Threat Intelligence",
+    "shortDescription": "Analyze files and URLs using multiple antivirus engines.",
+    "description": "VirusTotal aggregates results from many security vendors.",
+    "purpose": "Threat analysis.",
+    "whenToUse": "Checking suspicious files or URLs.",
+    "difficulty": "Beginner",
+    "supportedPlatforms": ["Web"],
+    "installation": "No installation required.",
+    "syntax": "Upload file or submit URL.",
+    "commands": [],
+    "examples": [],
+    "sampleOutput": "",
+    "outputExplanation": "",
+    "advantages": [
+      "Multiple AV engines"
+    ],
+    "limitations": [
+      "Public submissions may be visible to others"
+    ],
+    "bestPractices": [],
+    "tags": ["malware", "threat"],
+    "relatedTools": ["Shodan"],
+    "icon": "",
+    "image": ""
+  }
+]

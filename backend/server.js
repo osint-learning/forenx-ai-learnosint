@@ -6,7 +6,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const dns = require("dns");
-
+const toolRoutes = require("./routes/toolRoutes");
 const connectDB = require("./config/db");
 
 const metadataRoutes = require("./routes/metadataRoutes");
@@ -37,6 +37,7 @@ app.use(morgan("dev"));
 app.use("/api", require("./routes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/recon", require("./routes/reconRoutes"));
+app.use("/api/tools", toolRoutes);
 // Root Route
 app.get("/", (req, res) => {
     res.json({

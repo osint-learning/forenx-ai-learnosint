@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "seed:tools": "node seed/seedTools.js"
   },
   "author": "ForenX AI",
   "license": "MIT",
