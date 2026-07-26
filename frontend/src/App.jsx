@@ -1,16 +1,49 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Recon from "./pages/Recon";
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="text-center">
-        <h1 className="text-5xl font-bold text-blue-600">
-          ForenX AI LearnOSINT
-        </h1>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
 
-        <p className="mt-5 text-lg text-gray-600">
-          Frontend is working 🚀
-        </p>
-      </div>
-    </div>
+        <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recon"
+          element={
+            <ProtectedRoute>
+              <Recon />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

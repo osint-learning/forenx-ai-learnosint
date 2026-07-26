@@ -24,6 +24,6 @@ router.post("/ssl", protect, sslScan);
 router.post("/robots", protect, robotsScan);
 router.post("/technology", protect, technologyScan);
 router.post("/metadata", protect, metadataScan);
-router.post("/whois", whoisScan);
+router.post("/whois", protect, whoisScan);
 router.post("/fullscan", protect, fullReconScan);
 module.exports = router;
