@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 function Dashboard() {
   const user = JSON.parse(localStorage.getItem("user"));
   const navigate = useNavigate();
@@ -22,15 +23,43 @@ function Dashboard() {
 
       <div className="grid md:grid-cols-3 gap-6 p-8">
 
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-xl font-bold">
-            Learn OSINT
-          </h2>
+      <div className="bg-white rounded-xl shadow p-6">
 
-          <p className="mt-3 text-gray-600">
-            Learn Open Source Intelligence concepts.
-          </p>
-        </div>
+        <h2 className="text-xl font-bold">
+          Learn OSINT
+        </h2>
+
+        <p className="mt-3 text-gray-600">
+          Learn the fundamentals of Open Source Intelligence.
+        </p>
+
+        <Link
+          to="/learn"
+          className="inline-block mt-5 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Open
+        </Link>
+
+      </div>
+
+      <div className="bg-white rounded-xl shadow p-6">
+
+        <h2 className="text-xl font-bold">
+          OSINT Tool Explorer
+        </h2>
+
+        <p className="mt-3 text-gray-600">
+          Learn about OSINT tools, commands, examples and practice.
+        </p>
+
+        <Link
+          to="/tools"
+          className="inline-block mt-5 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Open
+        </Link>
+
+      </div>
 
         <div
           onClick={() => navigate("/recon")}
