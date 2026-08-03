@@ -2,13 +2,13 @@ const axios = require("axios");
 
 const getRobotsInfo = async (domain) => {
 
-    const url = domain.startsWith("http")
-        ? `${domain}/robots.txt`
+    const robotsUrl = domain.startsWith("http")
+        ? `${domain.replace(/\/$/, "")}/robots.txt`
         : `https://${domain}/robots.txt`;
 
     try {
 
-        const response = await axios.get(url, {
+        const response = await axios.get(robotsUrl, {
             timeout: 10000,
             validateStatus: () => true
         });
@@ -16,43 +16,99 @@ const getRobotsInfo = async (domain) => {
         if (response.status !== 200) {
             return {
                 exists: false,
+                url: robotsUrl,
                 message: "robots.txt not found"
             };
         }
 
-        const lines = response.data.split("\n");
+        const lines = response.data.split(/\r?\n/);
 
-        const disallowed = [];
-        let sitemap = null;
+        const disallow = [];
+        const allow = [];
+        const sitemaps = [];
+        const userAgents = [];
+        let crawlDelay = null;
+        let host = null;
 
-        lines.forEach((line) => {
+        for (let line of lines) {
 
             line = line.trim();
 
-            if (line.startsWith("Disallow:")) {
-                disallowed.push(
-                    line.replace("Disallow:", "").trim()
+            if (!line || line.startsWith("#")) continue;
+
+            if (/^User-agent:/i.test(line)) {
+                userAgents.push(
+                    line.replace(/^User-agent:/i, "").trim()
                 );
             }
 
-            if (line.startsWith("Sitemap:")) {
-                sitemap = line.replace("Sitemap:", "").trim();
+            else if (/^Disallow:/i.test(line)) {
+                const value = line.replace(/^Disallow:/i, "").trim();
+
+                if (value)
+                    disallow.push(value);
             }
 
-        });
+            else if (/^Allow:/i.test(line)) {
+                const value = line.replace(/^Allow:/i, "").trim();
+
+                if (value)
+                    allow.push(value);
+            }
+
+            else if (/^Sitemap:/i.test(line)) {
+                sitemaps.push(
+                    line.replace(/^Sitemap:/i, "").trim()
+                );
+            }
+
+            else if (/^Crawl-delay:/i.test(line)) {
+                crawlDelay = line.replace(/^Crawl-delay:/i, "").trim();
+            }
+
+            else if (/^Host:/i.test(line)) {
+                host = line.replace(/^Host:/i, "").trim();
+            }
+        }
 
         return {
+
             exists: true,
-            sitemap,
-            totalDisallowed: disallowed.length,
-            disallowed
+
+            url: robotsUrl,
+
+            status: response.status,
+
+            userAgents,
+
+            disallow,
+
+            allow,
+
+            sitemaps,
+
+            crawlDelay,
+
+            host,
+
+            totalRules: disallow.length + allow.length,
+
+            totalUserAgents: userAgents.length
+
         };
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         return {
+
             exists: false,
+
+            url: robotsUrl,
+
             error: error.message
+
         };
 
     }

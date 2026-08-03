@@ -24,62 +24,108 @@ function resolveUrl(baseUrl, value) {
  * Extract basic metadata
  */
 function extractBasicMetadata($, url) {
-    return {
-        title:
-            getMetaContent($, 'meta[property="og:title"]') ||
-            $("title").text().trim(),
+  const title =
+    $("title").text().trim() ||
+    getMetaContent($, 'meta[property="og:title"]');
 
-        description: getMetaContent(
-            $,
-            'meta[name="description"]'
-        ),
+const description =
+    getMetaContent($, 'meta[name="description"]') ||
+    getMetaContent($, 'meta[property="og:description"]');
 
-        keywords: getMetaContent(
-            $,
-            'meta[name="keywords"]'
-        ),
+const keywords =
+    getMetaContent($, 'meta[name="keywords"]');
 
-        author: getMetaContent(
-            $,
-            'meta[name="author"]'
-        ),
+const author =
+    getMetaContent($, 'meta[name="author"]');
 
-        generator: getMetaContent(
-            $,
-            'meta[name="generator"]'
-        ),
+const generator =
+    getMetaContent($, 'meta[name="generator"]');
 
-        language:
-            $("html").attr("lang") ||
-            getMetaContent($, 'meta[http-equiv="content-language"]'),
+const publisher =
+    getMetaContent($, 'meta[name="publisher"]');
 
-        canonical: resolveUrl(
-            url,
-            $('link[rel="canonical"]').attr("href")
-        ),
+const copyright =
+    getMetaContent($, 'meta[name="copyright"]');
 
-        robots: getMetaContent(
-            $,
-            'meta[name="robots"]'
-        ),
+const charset =
+    $("meta[charset]").attr("charset") ||
+    "";
 
-        viewport: getMetaContent(
-            $,
-            'meta[name="viewport"]'
-        ),
+const language =
+    $("html").attr("lang") ||
+    getMetaContent($, 'meta[http-equiv="content-language"]');
 
-        themeColor: getMetaContent(
-            $,
-            'meta[name="theme-color"]'
-        ),
+const viewport =
+    getMetaContent($, 'meta[name="viewport"]');
 
-        favicon: resolveUrl(
-            url,
-            $('link[rel="icon"]').attr("href") ||
-            $('link[rel="shortcut icon"]').attr("href") ||
-            "/favicon.ico"
-        ),
-    };
+const robots =
+    getMetaContent($, 'meta[name="robots"]');
+
+const themeColor =
+    getMetaContent($, 'meta[name="theme-color"]');
+
+const canonical =
+    resolveUrl(
+        url,
+        $('link[rel="canonical"]').attr("href")
+    );
+
+const favicon =
+    resolveUrl(
+        url,
+        $('link[rel="icon"]').attr("href") ||
+        $('link[rel="shortcut icon"]').attr("href") ||
+        $('link[rel="apple-touch-icon"]').attr("href") ||
+        "/favicon.ico"
+    );
+
+const manifest =
+    resolveUrl(
+        url,
+        $('link[rel="manifest"]').attr("href")
+    );
+
+const rss =
+    resolveUrl(
+        url,
+        $('link[type="application/rss+xml"]').attr("href")
+    );
+
+return {
+
+    title,
+
+    description,
+
+    keywords,
+
+    author,
+
+    generator,
+
+    publisher,
+
+    copyright,
+
+    charset,
+
+    language,
+
+    viewport,
+
+    robots,
+
+    themeColor,
+
+    canonical,
+
+    favicon,
+
+    manifest,
+
+    rss
+
+};
 }
 
 /**

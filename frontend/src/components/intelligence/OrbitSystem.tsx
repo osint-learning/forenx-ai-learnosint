@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from "../../context/AuthContext";
+import * as ToolProgressService from "../../services/toolProgressService";
 import type { OsintTool, ToolCategory } from '../../types';
 import { GlassCard } from '../ui/GlassCard';
 import { DynamicIcon } from '../../utils/iconHelper';
@@ -13,6 +15,8 @@ interface OrbitSystemProps {
 
 export const OrbitSystem: React.FC<OrbitSystemProps> = ({ tools, categoryFilter = 'All' }) => {
   const { selectedTool, setSelectedTool } = useApp();
+  const { token } = useAuth();
+  const [progress, setProgress] = useState<any[]>([]);
   const [rotationAngle, setRotationAngle] = useState<number>(0);
   const [isPaused, setIsPaused] = useState<boolean>(false);
 
@@ -28,7 +32,20 @@ export const OrbitSystem: React.FC<OrbitSystemProps> = ({ tools, categoryFilter 
     }, 40);
     return () => clearInterval(interval);
   }, [isPaused, selectedTool]);
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!token) return;
 
+      try {
+        const data = await ToolProgressService.getProgress(token);
+        setProgress(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadProgress();
+  }, [token]);
   return (
     <div
       className="relative w-full min-h-[520px] flex items-center justify-center overflow-hidden py-10"
@@ -43,6 +60,9 @@ export const OrbitSystem: React.FC<OrbitSystemProps> = ({ tools, categoryFilter 
       {/* Orbiting Tool Cards */}
       <div className="relative w-full max-w-5xl h-[480px] flex items-center justify-center">
         {filteredTools.map((tool, index) => {
+          const toolProgress = progress.find(
+            (p) => p.toolId === tool.id
+          );
           const total = filteredTools.length;
           const baseAngle = (360 / total) * index;
           const currentAngle = (baseAngle + rotationAngle) * (Math.PI / 180);
@@ -76,21 +96,43 @@ export const OrbitSystem: React.FC<OrbitSystemProps> = ({ tools, categoryFilter 
                 zIndex: isSelected ? 20 : zIndex
               }}
             >
-              <GlassCard
-                glow="emerald"
-                active={isSelected}
-                className="w-48 p-4 flex flex-col items-center text-center space-y-2 group-hover:scale-105 group-hover:border-[#00ff99] transition-all"
-              >
-                <div className="p-3 rounded-xl bg-[#00ff99]/10 text-[#00ff99] border border-[#00ff99]/30 group-hover:bg-[#00ff99]/20 group-hover:shadow-[0_0_15px_rgba(0,255,153,0.5)] transition-all">
-                  <DynamicIcon name={tool.icon} size={24} />
+          <GlassCard
+            glow="emerald"
+            active={isSelected}
+            className="w-48 p-4 flex flex-col items-center text-center space-y-2 group-hover:scale-105 group-hover:border-[#00ff99] transition-all"
+          >
+            <div className="p-3 rounded-xl bg-[#00ff99]/10 text-[#00ff99] border border-[#00ff99]/30 group-hover:bg-[#00ff99]/20 group-hover:shadow-[0_0_15px_rgba(0,255,153,0.5)] transition-all">
+              <DynamicIcon name={tool.icon} size={24} />
+            </div>
+
+            <h3 className="font-mono font-bold text-white text-sm tracking-wide group-hover:text-[#00ff99] transition-colors">
+              {tool.name}
+            </h3>
+
+            <Badge variant="emerald" size="sm">
+              {tool.category.split(" ")[0]}
+            </Badge>
+
+            {toolProgress && (
+              <div className="w-full mt-2">
+
+                <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#00ff99] transition-all duration-500"
+                    style={{
+                      width: `${toolProgress.progress}%`,
+                    }}
+                  />
                 </div>
-                <h3 className="font-mono font-bold text-white text-sm tracking-wide group-hover:text-[#00ff99] transition-colors">
-                  {tool.name}
-                </h3>
-                <Badge variant="emerald" size="sm">
-                  {tool.category.split(' ')[0]}
-                </Badge>
-              </GlassCard>
+
+                <p className="text-[10px] text-slate-400 mt-2 font-mono">
+                  {toolProgress.completedLessons} / {toolProgress.totalLessons} Lessons
+                </p>
+
+              </div>
+            )}
+
+          </GlassCard>
             </div>
           );
         })}

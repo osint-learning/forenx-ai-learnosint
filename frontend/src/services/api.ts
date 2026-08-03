@@ -72,10 +72,23 @@ export const OsintService = {
     }
   },
 
-  async executeReconScan(target: string): Promise<ReconResult> {
+  async executeReconScan(target: string): Promise<any> {
     try {
-      const response = await apiClient.post<ReconResult>('/recon/scan', { target });
-      return response.data;
+      const token = localStorage.getItem("token");
+
+      const response = await apiClient.post(
+        "/recon/fullscan",
+        {
+          domain: target,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data.data;
     } catch {
       // Mock realistic dynamic scan response
       const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(target);

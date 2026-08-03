@@ -183,6 +183,39 @@ const deleteTool = async (req, res) => {
     });
   }
 };
+const Lesson = require("../models/Lesson");
+const LessonProgress = require("../models/LessonProgress");
+
+const getToolProgress = async (req, res) => {
+  const tools = await Tool.find();
+
+  const result = [];
+
+  for (const tool of tools) {
+    const totalLessons = await Lesson.countDocuments({
+      tool: tool._id,
+    });
+
+    const completedLessons = await LessonProgress.countDocuments({
+      tool: tool._id,
+      user: req.user._id,
+      completed: true,
+    });
+
+    result.push({
+      toolId: tool._id,
+      toolName: tool.name,
+      totalLessons,
+      completedLessons,
+      progress:
+        totalLessons === 0
+          ? 0
+          : Math.round((completedLessons / totalLessons) * 100),
+    });
+  }
+
+  res.json(result);
+};
 
 module.exports = {
   getAllTools,
@@ -192,4 +225,5 @@ module.exports = {
   createTool,
   updateTool,
   deleteTool,
-};
+  getToolProgress,
+};1000

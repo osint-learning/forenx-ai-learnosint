@@ -1,49 +1,79 @@
 const axios = require("axios");
-const cheerio = require("cheerio");
-const { parseMetadata } = require("./metadataParser");
+const metascraper = require("metascraper")([
+    require("metascraper-author")(),
+    require("metascraper-date")(),
+    require("metascraper-description")(),
+    require("metascraper-image")(),
+    require("metascraper-lang")(),
+    require("metascraper-logo")(),
+    require("metascraper-logo-favicon")(),
+    require("metascraper-publisher")(),
+    require("metascraper-title")(),
+    require("metascraper-url")()
+]);
 
-/**
- * Fetch webpage and extract metadata
- * @param {string} url
- * @returns {Object}
- */
-async function getMetadata(url) {
+async function getMetadata(domain) {
+
     try {
-        // Normalize URL
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+
+        let url = domain;
+
+        if (
+            !url.startsWith("http://") &&
+            !url.startsWith("https://")
+        ) {
             url = `https://${url}`;
         }
 
-        // Fetch webpage
         const response = await axios.get(url, {
+
             timeout: 10000,
-            maxRedirects: 5,
+
             headers: {
+
                 "User-Agent":
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
-            },
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36"
+
+            }
+
         });
 
-        // Load HTML into Cheerio
-        const $ = cheerio.load(response.data);
+        const metadata = await metascraper({
 
-        // Parse metadata
-        const metadata = parseMetadata($, url);
+            html: response.data,
+
+            url
+
+        });
 
         return {
+
             success: true,
+
             url,
-            metadata,
+
+            metadata
+
         };
-    } catch (error) {
-        return {
-            success: false,
-            url,
-            error: error.message,
-        };
+
     }
+
+    catch (error) {
+
+        return {
+
+            success: false,
+
+            error: error.message
+
+        };
+
+    }
+
 }
 
 module.exports = {
-    getMetadata,
+
+    getMetadata
+
 };
