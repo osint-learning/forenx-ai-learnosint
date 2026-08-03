@@ -1,5 +1,5 @@
 import { BrowserRouter, useLocation } from "react-router-dom";
-
+import { useAuth } from "./context/AuthContext";
 import { ParticleField } from "./components/intelligence/ParticleField";
 import { Navbar } from "./components/layout/Navbar";
 import { Footer } from "./components/layout/Footer";
@@ -8,18 +8,19 @@ import { AppRouter } from "./router";
 
 function AppLayout() {
   const location = useLocation();
-
+  const { user, loading } = useAuth();
   const isAuthPage =
     location.pathname === "/login" ||
     location.pathname === "/register";
 
+  const isLoggedIn = !!user;
   return (
     <div className="min-h-screen bg-[#030303] text-slate-100 relative overflow-hidden flex flex-col selection:bg-[#00ff99] selection:text-black">
       {/* Background */}
       <ParticleField />
 
       {/* Show only after login */}
-      {!isAuthPage && <Navbar />}
+      {!isAuthPage && isLoggedIn && <Navbar />}
 
       <main
         className={
@@ -32,10 +33,10 @@ function AppLayout() {
       </main>
 
       {/* Show only after login */}
-      {!isAuthPage && <AiMentorDrawer />}
+      {!isAuthPage && isLoggedIn && <AiMentorDrawer />}
 
       {/* Show only after login */}
-      {!isAuthPage && <Footer />}
+      {!isAuthPage && isLoggedIn && <Footer />}
     </div>
   );
 }

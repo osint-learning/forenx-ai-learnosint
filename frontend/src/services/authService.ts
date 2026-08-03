@@ -45,6 +45,6 @@ export const getProfile = async (token: string) => {
 
 // ---------- LOGOUT ----------
 export const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("user");
 };

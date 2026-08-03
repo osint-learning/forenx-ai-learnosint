@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { GlowButton } from '../ui/GlowButton';
-import { Shield, Search, Bot, Zap } from 'lucide-react';
+import {
+  Shield,
+  Search,
+  Bot,
+  Zap,
+  LogOut,
+} from "lucide-react";
 
 export const Navbar: React.FC = () => {
   const { userProfile, setIsAiMentorOpen, isAiMentorOpen, setSelectedTool, tools } = useApp();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
@@ -110,12 +118,31 @@ export const Navbar: React.FC = () => {
 
           {/* AI Mentor Toggle */}
           <GlowButton
-            variant={isAiMentorOpen ? 'primary' : 'secondary'}
+            variant={isAiMentorOpen ? "primary" : "secondary"}
             icon={<Bot size={16} />}
             onClick={() => setIsAiMentorOpen(!isAiMentorOpen)}
             className="!px-3 !py-1.5"
           >
-            <span className="hidden sm:inline">AI Mentor</span>
+            <span className="hidden sm:inline">
+              AI Mentor
+            </span>
+          </GlowButton>
+
+          {/* Logout Button */}
+          <GlowButton
+            variant="secondary"
+            icon={<LogOut size={16} />}
+            onClick={() => {
+              if (window.confirm("Are you sure you want to logout?")) {
+                logout();
+                navigate("/login", { replace: true });
+              }
+            }}
+            className="!px-3 !py-1.5"
+          >
+            <span className="hidden sm:inline">
+              Logout
+            </span>
           </GlowButton>
         </div>
       </div>

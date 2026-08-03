@@ -3,7 +3,7 @@ import React from 'react';
 interface GlowButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   className?: string;
-  variant?: 'green' | 'cyan' | 'primary' | 'ghost';
+  variant?: 'green' | 'cyan' | 'primary' | 'ghost' | 'secondary';
   glow?: boolean;
   isLoading?: boolean;
   icon?: React.ReactNode;
@@ -31,6 +31,9 @@ export function GlowButton({
       'bg-transparent text-[#00ff99] border-[#00ff99]/50 hover:bg-[#00ff99] hover:text-black hover:shadow-[0_0_20px_rgba(0,255,153,0.4)]',
 
     ghost:
+      'bg-transparent text-slate-300 border border-white/10 hover:text-[#00ff99] hover:bg-white/5',
+
+    secondary:
       'bg-transparent text-slate-300 border border-white/10 hover:text-[#00ff99] hover:bg-white/5'
   };
 

@@ -46,7 +46,7 @@ export const AuthProvider = ({
   const [user, setUser] = useState<User | null>(null);
 
   const [token, setToken] = useState<string | null>(
-    localStorage.getItem("token")
+    sessionStorage.getItem("token")
   );
 
   const [loading, setLoading] = useState(true);
@@ -83,11 +83,8 @@ export const AuthProvider = ({
       password
     );
 
-    localStorage.setItem("token", res.token);
-    localStorage.setItem(
-      "user",
-      JSON.stringify(res.user)
-    );
+    sessionStorage.setItem("token", res.token);
+    sessionStorage.setItem("user", JSON.stringify(res.user));
 
     setToken(res.token);
     setUser(res.user);
