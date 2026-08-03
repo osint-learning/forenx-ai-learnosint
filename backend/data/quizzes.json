@@ -1,0 +1,72 @@
+[
+  {
+    "toolName": "WHOIS",
+    "question": "What information does WHOIS primarily provide?",
+    "options": [
+      "Domain registration details",
+      "Website source code",
+      "Network traffic",
+      "Passwords"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "WHOIS provides domain registration and ownership information.",
+    "difficulty": "Beginner",
+    "order": 1
+  },
+  {
+    "toolName": "WHOIS",
+    "question": "Which command retrieves WHOIS information?",
+    "options": [
+      "ping example.com",
+      "whois example.com",
+      "nslookup example.com",
+      "dig example.com"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "The whois command retrieves domain registration information.",
+    "difficulty": "Beginner",
+    "order": 2
+  },
+  {
+    "toolName": "WHOIS",
+    "question": "Which field shows when a domain expires?",
+    "options": [
+      "Creation Date",
+      "Registrar",
+      "Expiry Date",
+      "Status"
+    ],
+    "correctAnswerIndex": 2,
+    "explanation": "Expiry Date indicates when the domain registration ends.",
+    "difficulty": "Beginner",
+    "order": 3
+  },
+  {
+    "toolName": "WHOIS",
+    "question": "Why should WHOIS results be verified?",
+    "options": [
+      "WHOIS is always wrong",
+      "Data may be hidden or outdated",
+      "WHOIS never returns data",
+      "WHOIS is illegal"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Privacy protection and outdated records can affect WHOIS accuracy.",
+    "difficulty": "Intermediate",
+    "order": 4
+  },
+  {
+    "toolName": "WHOIS",
+    "question": "WHOIS is mainly used during which OSINT phase?",
+    "options": [
+      "Exploitation",
+      "Reconnaissance",
+      "Persistence",
+      "Privilege Escalation"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "WHOIS is commonly used during reconnaissance.",
+    "difficulty": "Beginner",
+    "order": 5
+  }
+]

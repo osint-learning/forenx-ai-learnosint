@@ -1,0 +1,100 @@
+[
+  {
+    "toolName": "WHOIS",
+    "lessonNumber": 1,
+    "title": "Introduction to WHOIS",
+    "shortDescription": "Learn what WHOIS is and why it is important.",
+    "objectives": [
+      "Understand WHOIS",
+      "Know where WHOIS is used",
+      "Identify common use cases"
+    ],
+    "content": "WHOIS is a protocol and database that provides registration information about domain names. Cybersecurity professionals use WHOIS to identify domain ownership, registrar information, creation dates, expiration dates and contact information when available.",
+    "keyPoints": [
+      "Provides domain registration details",
+      "Useful during reconnaissance",
+      "Helps identify domain ownership"
+    ],
+    "example": "Run 'whois example.com' to retrieve registration information.",
+    "estimatedTime": 5,
+    "order": 1
+  },
+  {
+    "toolName": "WHOIS",
+    "lessonNumber": 2,
+    "title": "Installing WHOIS",
+    "shortDescription": "Learn how to install WHOIS on different operating systems.",
+    "objectives": [
+      "Install WHOIS",
+      "Verify installation"
+    ],
+    "content": "WHOIS is preinstalled on many Linux distributions. Windows users can install WHOIS clients or use online services. macOS users can install it using Homebrew if necessary.",
+    "keyPoints": [
+      "Linux usually includes WHOIS",
+      "Windows requires installation",
+      "Verify installation before use"
+    ],
+    "example": "whois google.com",
+    "estimatedTime": 5,
+    "order": 2
+  },
+  {
+    "toolName": "WHOIS",
+    "lessonNumber": 3,
+    "title": "Running WHOIS Commands",
+    "shortDescription": "Execute basic WHOIS commands.",
+    "objectives": [
+      "Run WHOIS queries",
+      "Interpret command syntax"
+    ],
+    "content": "The basic syntax is 'whois domain.com'. The output includes registrar details, registration dates, DNS servers and other registration information.",
+    "keyPoints": [
+      "Basic syntax",
+      "Registrar",
+      "Creation date",
+      "Expiry date"
+    ],
+    "example": "whois openai.com",
+    "estimatedTime": 8,
+    "order": 3
+  },
+  {
+    "toolName": "WHOIS",
+    "lessonNumber": 4,
+    "title": "Understanding WHOIS Output",
+    "shortDescription": "Interpret WHOIS results.",
+    "objectives": [
+      "Read WHOIS output",
+      "Understand important fields"
+    ],
+    "content": "WHOIS output contains registrar information, creation date, expiration date, updated date, domain status and name servers. Each field helps investigators gather intelligence about the target domain.",
+    "keyPoints": [
+      "Registrar",
+      "Creation Date",
+      "Expiry Date",
+      "Name Servers"
+    ],
+    "example": "Identify the registrar of github.com using WHOIS.",
+    "estimatedTime": 10,
+    "order": 4
+  },
+  {
+    "toolName": "WHOIS",
+    "lessonNumber": 5,
+    "title": "WHOIS Best Practices",
+    "shortDescription": "Follow ethical and professional practices.",
+    "objectives": [
+      "Use WHOIS responsibly",
+      "Verify collected information"
+    ],
+    "content": "Always verify WHOIS results with multiple sources. Respect privacy regulations and remember that WHOIS information may be hidden due to privacy protection services.",
+    "keyPoints": [
+      "Verify information",
+      "Respect privacy",
+      "Cross-check findings"
+    ],
+    "example": "Compare WHOIS information with DNS Lookup results.",
+    "estimatedTime": 6,
+    "order": 5
+  }
+]

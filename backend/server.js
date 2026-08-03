@@ -7,7 +7,9 @@ const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const dns = require("dns");
 const toolRoutes = require("./routes/toolRoutes");
+const lessonRoutes = require("./routes/lessonRoutes");
 const connectDB = require("./config/db");
+const quizRoutes = require("./routes/quizRoutes");
 
 const metadataRoutes = require("./routes/metadataRoutes");
 // Fix MongoDB Atlas DNS resolution
@@ -38,6 +40,8 @@ app.use("/api", require("./routes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/recon", require("./routes/reconRoutes"));
 app.use("/api/tools", toolRoutes);
+app.use("/api/lessons", lessonRoutes);
+app.use("/api/quizzes", quizRoutes);
 // Root Route
 app.get("/", (req, res) => {
     res.json({

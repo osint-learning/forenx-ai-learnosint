@@ -83,6 +83,8 @@ const toolSchema = new mongoose.Schema(
         output: String,
       },
     ],
+    
+    lessons: [String],    
 
     sampleOutput: {
       type: String,

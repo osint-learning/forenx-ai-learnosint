@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-dark: #030303;
+    --dark-green: #052d1d;
+    --emerald-primary: #00ff99;
+    --neon-green: #17ff88;
+    --cyan-glow: #7efeff;
+    --soft-white: rgba(255, 255, 255, 0.85);
+  }
+
+  body {
+    background-color: #030303;
+    color: #e2e8f0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(3, 3, 3, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 153, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(23, 255, 136, 0.6);
+  box-shadow: 0 0 10px rgba(0, 255, 153, 0.8);
+}
+
+/* Liquid Glass Card Utilities */
+.liquid-glass {
+  background: rgba(5, 45, 29, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 255, 153, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6),
+              inset 0 0 1px 1px rgba(255, 255, 255, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass:hover {
+  border-color: rgba(23, 255, 136, 0.45);
+  box-shadow: 0 12px 40px 0 rgba(0, 255, 153, 0.25),
+              inset 0 0 2px 1px rgba(126, 254, 255, 0.2);
+}
+
+.liquid-glass-active {
+  background: rgba(5, 45, 29, 0.65);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(23, 255, 136, 0.8);
+  box-shadow: 0 0 30px rgba(0, 255, 153, 0.4),
+              inset 0 0 15px rgba(0, 255, 153, 0.2);
+}
+
+/* Cyber Neon Text & Borders */
+.neon-text-emerald {
+  color: #00ff99;
+  text-shadow: 0 0 10px rgba(0, 255, 153, 0.6), 0 0 20px rgba(0, 255, 153, 0.3);
+}
+
+.neon-text-cyan {
+  color: #7efeff;
+  text-shadow: 0 0 10px rgba(126, 254, 255, 0.6), 0 0 20px rgba(126, 254, 255, 0.3);
+}
+
+.neon-border-emerald {
+  border-color: #00ff99;
+  box-shadow: 0 0 15px rgba(0, 255, 153, 0.35);
+}
+
+/* Scanlines and Cyber Grid Overlay */
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 255, 153, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 255, 153, 0.05) 1px, transparent 1px);
+}
+
+.scanline-overlay {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
+/* Animations */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.animate-radar {
+  animation: radar-pulse 3s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes holographic-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-hologram {
+  animation: holographic-rotate 25s linear infinite;
+}
