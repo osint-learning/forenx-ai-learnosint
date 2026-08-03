@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { GlowButton } from "../ui/GlowButton";
+import { CheckCircle } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import * as LessonProgressService from "../../services/lessonProgressService";
 
 interface LessonViewerProps {
   lesson: any;
@@ -16,6 +19,33 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
   onClose,
   onSelectLesson,
 }) => {
+  const { token } = useAuth();
+
+  const [completed, setCompleted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    const loadCompletion = async () => {
+      if (!lesson || !token) return;
+
+      try {
+        const completedStatus =
+          await LessonProgressService.isLessonCompleted(
+            lesson.tool,
+            lesson._id,
+            token
+          );
+
+        setCompleted(completedStatus);
+      } catch (err) {
+        console.error(err);
+        setCompleted(false);
+      }
+
+      setSaving(false);
+    };
+
+    loadCompletion();
+  }, [lesson, token]);
   if (!lesson) return null;
 
   const currentIndex = lessons.findIndex((l) => l._id === lesson._id);
@@ -27,7 +57,28 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
     currentIndex < lessons.length - 1
       ? lessons[currentIndex + 1]
       : null;
+  const handleCompleteLesson = async () => {
+    if (!lesson || !token) return;
 
+    try {
+      setSaving(true);
+
+      await LessonProgressService.completeLesson(
+        lesson._id,
+        lesson.tool,
+        token
+      );
+
+      setCompleted(true);
+
+      alert("Lesson completed!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save lesson progress.");
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-md flex justify-center items-center p-6">
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[#00ff99]/30 bg-[#05140f] shadow-[0_0_40px_rgba(0,255,153,0.2)]">
@@ -99,7 +150,7 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
 
         </div>
 
-        <div className="p-6 border-t border-[#00ff99]/20 flex justify-between">
+        <div className="p-6 border-t border-[#00ff99]/20 flex justify-between gap-4">
 
           <GlowButton
             variant="ghost"
@@ -110,6 +161,19 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
             }
           >
             Previous
+          </GlowButton>
+
+          <GlowButton
+            variant="primary"
+            icon={<CheckCircle size={18} />}
+            onClick={handleCompleteLesson}
+            disabled={completed || saving}
+          >
+            {completed
+              ? "Completed ✓"
+              : saving
+              ? "Saving..."
+              : "Mark as Complete"}
           </GlowButton>
 
           <GlowButton

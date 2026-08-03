@@ -1,37 +1,58 @@
 import React from 'react';
 
 interface GlowButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   children: React.ReactNode;
+  className?: string;
+  variant?: 'green' | 'cyan' | 'primary' | 'ghost';
+  glow?: boolean;
+  isLoading?: boolean;
   icon?: React.ReactNode;
 }
 
-export const GlowButton: React.FC<GlowButtonProps> = ({
-  variant = 'primary',
+export function GlowButton({
   children,
-  icon,
   className = '',
+  variant = 'green',
+  glow = true,
+  isLoading = false,
+  icon,
   ...props
-}) => {
-  const variants = {
-    primary: 'bg-[#00ff99]/15 text-[#00ff99] border border-[#00ff99]/60 hover:bg-[#00ff99]/25 hover:shadow-[0_0_20px_rgba(0,255,153,0.5)] hover:border-[#17ff88]',
-    secondary: 'bg-[#7efeff]/10 text-[#7efeff] border border-[#7efeff]/40 hover:bg-[#7efeff]/20 hover:shadow-[0_0_20px_rgba(126,254,255,0.4)]',
-    danger: 'bg-rose-500/15 text-rose-400 border border-rose-500/40 hover:bg-rose-500/25 hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]',
-    ghost: 'bg-transparent text-slate-300 hover:text-[#00ff99] hover:bg-white/5 border border-white/10'
+}: GlowButtonProps) {
+  const baseStyles = 'relative font-mono tracking-wider font-semibold rounded-lg px-6 py-2.5 transition-all duration-300 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden flex items-center justify-center gap-2 border';
+  
+  const variantStyles = {
+    green:
+      'bg-transparent text-[#00ff99] border-[#00ff99]/50 hover:bg-[#00ff99] hover:text-black hover:shadow-[0_0_20px_rgba(0,255,153,0.4)]',
+
+    cyan:
+      'bg-transparent text-[#7efeff] border-[#7efeff]/50 hover:bg-[#7efeff] hover:text-black hover:shadow-[0_0_20px_rgba(126,254,255,0.4)]',
+
+    primary:
+      'bg-transparent text-[#00ff99] border-[#00ff99]/50 hover:bg-[#00ff99] hover:text-black hover:shadow-[0_0_20px_rgba(0,255,153,0.4)]',
+
+    ghost:
+      'bg-transparent text-slate-300 border border-white/10 hover:text-[#00ff99] hover:bg-white/5'
   };
 
   return (
     <button
-      className={`
-        inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200
-        active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer
-        ${variants[variant]}
-        ${className}
-      `}
+      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      disabled={isLoading || props.disabled}
       {...props}
     >
-      {icon && <span className="shrink-0">{icon}</span>}
-      {children}
+      {isLoading ? (
+        <>
+          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+          <span>PROCESSING...</span>
+        </>
+      ) : (
+        <>
+          {icon && <span>{icon}</span>}
+          {children}
+        </>
+      )}
     </button>
   );
-};
+}
+
+export default GlowButton;

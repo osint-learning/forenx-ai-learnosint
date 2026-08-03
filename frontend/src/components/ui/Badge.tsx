@@ -1,15 +1,17 @@
 import React from 'react';
 
-interface BadgeProps {
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
   variant?: 'emerald' | 'cyan' | 'warning' | 'purple';
   size?: 'sm' | 'md';
+  className?: string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
   children,
   variant = 'emerald',
-  size = 'md'
+  size = 'md',
+  className = ''
 }) => {
   const styles = {
     emerald: 'bg-[#00ff99]/15 text-[#00ff99] border-[#00ff99]/40',
@@ -24,14 +26,16 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   return (
-    <span
-      className={`
-        inline-flex items-center font-mono font-medium rounded-md border backdrop-blur-md uppercase tracking-wider
-        ${styles[variant]}
-        ${sizes[size]}
-      `}
-    >
+  <span
+    className={`
+      inline-flex items-center font-mono font-medium rounded-md border backdrop-blur-md uppercase tracking-wider
+      ${styles[variant]}
+      ${sizes[size]}
+      ${className ?? ""}
+    `}
+  >
       {children}
     </span>
   );
 };
+export default Badge;
