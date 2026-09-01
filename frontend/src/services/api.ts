@@ -138,6 +138,34 @@ export const OsintService = {
     }
   },
 
+async executeTerminalCommand(
+  command: string,
+  practiceTool?: string
+): Promise<any> {
+  const token =
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Please login before using the Practice Lab.");
+  }
+
+  const response = await apiClient.post(
+    "/recon/terminal",
+    {
+      command,
+      practiceTool: practiceTool || null,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.data;
+},
+
   async generateReport(target: string, scanData: ReconResult): Promise<IntelligenceReport> {
     return {
       id: `REP-${Math.floor(Math.random() * 90000) + 10000}`,

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Terminal } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { GlowButton } from "../ui/GlowButton";
 import { CheckCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import * as LessonProgressService from "../../services/lessonProgressService";
 
 interface LessonViewerProps {
@@ -20,7 +21,7 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
   onSelectLesson,
 }) => {
   const { token } = useAuth();
-
+  const navigate = useNavigate();
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -150,44 +151,62 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
 
         </div>
 
-        <div className="p-6 border-t border-[#00ff99]/20 flex justify-between gap-4">
+<div className="p-6 border-t border-[#00ff99]/20 flex flex-wrap justify-between gap-4">
 
-          <GlowButton
-            variant="ghost"
-            icon={<ChevronLeft size={18} />}
-            disabled={!previousLesson}
-            onClick={() =>
-              previousLesson && onSelectLesson(previousLesson)
-            }
-          >
-            Previous
-          </GlowButton>
+  <GlowButton
+    variant="ghost"
+    icon={<ChevronLeft size={18} />}
+    disabled={!previousLesson}
+    onClick={() =>
+      previousLesson && onSelectLesson(previousLesson)
+    }
+  >
+    Previous
+  </GlowButton>
 
-          <GlowButton
-            variant="primary"
-            icon={<CheckCircle size={18} />}
-            onClick={handleCompleteLesson}
-            disabled={completed || saving}
-          >
-            {completed
-              ? "Completed ✓"
-              : saving
-              ? "Saving..."
-              : "Mark as Complete"}
-          </GlowButton>
+  <div className="flex flex-wrap gap-3">
 
-          <GlowButton
-            variant="primary"
-            icon={<ChevronRight size={18} />}
-            disabled={!nextLesson}
-            onClick={() =>
-              nextLesson && onSelectLesson(nextLesson)
-            }
-          >
-            Next
-          </GlowButton>
+    <GlowButton
+      variant="primary"
+      icon={<Terminal size={18} />}
+      onClick={() => {
+        navigate(
+          `/practice-labs?tool=${encodeURIComponent(
+            lesson.toolName || lesson.tool || ""
+          )}`
+        );
+      }}
+    >
+      Practice Lab
+    </GlowButton>
 
-        </div>
+    <GlowButton
+      variant="primary"
+      icon={<CheckCircle size={18} />}
+      onClick={handleCompleteLesson}
+      disabled={completed || saving}
+    >
+      {completed
+        ? "Completed ✓"
+        : saving
+        ? "Saving..."
+        : "Mark as Complete"}
+    </GlowButton>
+
+  </div>
+
+  <GlowButton
+    variant="primary"
+    icon={<ChevronRight size={18} />}
+    disabled={!nextLesson}
+    onClick={() =>
+      nextLesson && onSelectLesson(nextLesson)
+    }
+  >
+    Next
+  </GlowButton>
+
+</div>
 
       </div>
     </div>

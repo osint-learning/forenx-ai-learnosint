@@ -73,16 +73,52 @@ export interface LabObjective {
 
 export interface PracticeLab {
   id: string;
+
+  // Basic mission information
   title: string;
   category: ToolCategory;
   difficulty: 'Easy' | 'Medium' | 'Hard' | 'Insane';
   xpReward: number;
+
+  // Investigation target
   targetDomainOrIp: string;
   missionBrief: string;
+
+  // Tool-specific practice
+  toolId?: string;
+  toolName?: string;
+  requiredCommand?: string;
+
+  // Mission objectives
   objectives: LabObjective[];
-  evidenceFiles: { name: string; content: string; type: string }[];
+
+  // Evidence and hints
+  evidenceFiles: {
+    name: string;
+    content: string;
+    type: string;
+  }[];
+
   hints: string[];
+
+  // Future output-analysis phase
+  analysisQuestions?: LabQuestion[];
+
   initialFilesystem?: Record<string, string>;
+}
+
+export interface LabQuestion {
+  id: string;
+  question: string;
+  answerType: 'text' | 'number' | 'choice';
+
+  options?: string[];
+
+  correctAnswer?: string;
+
+  explanation?: string;
+
+  points?: number;
 }
 
 export interface ReconResult {

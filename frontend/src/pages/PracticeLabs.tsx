@@ -2,18 +2,88 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { INITIAL_LABS } from '../constants';
 import type { PracticeLab } from '../types';
+import { useSearchParams } from "react-router-dom";
 import { GlassCard } from '../components/ui/GlassCard';
 import { Badge } from '../components/ui/Badge';
 import { InteractiveTerminal } from '../components/terminal/InteractiveTerminal';
 import { Terminal, Award, CheckCircle2, HelpCircle, FileText, Sparkles } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+const createToolPracticeLab = (
+  tool: string
+): PracticeLab | null => {
+  const missions: Record<string, PracticeLab> = {
+    WHOIS: {
+      id: "whois-practice-01",
+      title: "Domain Registration Investigation",
+      category: "Domain Investigation",
+      difficulty: "Easy",
+      xpReward: 100,
+      targetDomainOrIp: "example.com",
+
+      missionBrief:
+        "Investigate the target domain using WHOIS. Retrieve the domain registration information and identify important registration details from the real output.",
+
+      toolId: "whois",
+      toolName: "WHOIS",
+      requiredCommand: "whois",
+
+      objectives: [
+        {
+          id: "whois-objective-1",
+          task: "Execute a WHOIS query against the target domain.",
+          completed: false,
+          hint: "Use the command taught in the WHOIS lesson."
+        },
+        {
+          id: "whois-objective-2",
+          task: "Analyze the WHOIS output and identify important registration information.",
+          completed: false,
+          hint: "Look for the domain name, registrar, dates and name servers."
+        }
+      ],
+
+      evidenceFiles: [],
+
+      hints: [
+        "Think about the tool you just learned.",
+        "The command should query WHOIS information for the target.",
+        "Use the target domain provided in the mission."
+      ]
+    }
+  };
+
+  return missions[tool] || null;
+};
+
 export const PracticeLabs: React.FC = () => {
+  const [searchParams] = useSearchParams();
+
+  const selectedTool =
+    searchParams.get("tool")?.toUpperCase() || null;
+
+  const toolPracticeLab = selectedTool
+    ? createToolPracticeLab(selectedTool)
+    : null;
+
   const { completeLab, completedLabIds } = useApp();
-  const [activeLab, setActiveLab] = useState<PracticeLab>(INITIAL_LABS[0]);
-  const [objectivesState, setObjectivesState] = useState(activeLab.objectives);
-  const [activeLeftTab, setActiveLeftTab] = useState<'brief' | 'evidence' | 'hints'>('brief');
-  const [isLabCompleted, setIsLabCompleted] = useState(completedLabIds.includes(activeLab.id));
+
+  const defaultLab =
+    toolPracticeLab || INITIAL_LABS[0];
+
+  const [activeLab, setActiveLab] =
+    useState<PracticeLab>(defaultLab);
+
+  const [objectivesState, setObjectivesState] =
+    useState(defaultLab.objectives);
+
+  const [activeLeftTab, setActiveLeftTab] =
+    useState<'brief' | 'evidence' | 'hints'>('brief');
+
+  const [isLabCompleted, setIsLabCompleted] =
+    useState(
+      completedLabIds.includes(defaultLab.id)
+    );
 
   const handleCommandExecution = (cmd: string) => {
     const lower = cmd.toLowerCase();
@@ -51,23 +121,15 @@ export const PracticeLabs: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {INITIAL_LABS.map(lab => (
-            <button
-              key={lab.id}
-              onClick={() => {
-                setActiveLab(lab);
-                setObjectivesState(lab.objectives);
-                setIsLabCompleted(completedLabIds.includes(lab.id));
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all border cursor-pointer ${
-                activeLab.id === lab.id
-                  ? 'bg-[#00ff99]/20 border-[#00ff99] text-[#00ff99] font-bold'
-                  : 'bg-black/60 border-white/10 text-slate-300 hover:text-white'
-              }`}
-            >
-              {lab.title}
-            </button>
-          ))}
+          {selectedTool ? (
+            <Badge variant="emerald">
+              {selectedTool} PRACTICE
+            </Badge>
+          ) : (
+            <span className="text-xs font-mono text-slate-400">
+              CHALLENGE MODE
+            </span>
+          )}
         </div>
       </div>
 
@@ -188,6 +250,7 @@ export const PracticeLabs: React.FC = () => {
         <div className="lg:col-span-7 h-[580px]">
           <InteractiveTerminal
             initialTarget={activeLab.targetDomainOrIp}
+            practiceTool={selectedTool || undefined}
             onCommandRun={handleCommandExecution}
           />
         </div>

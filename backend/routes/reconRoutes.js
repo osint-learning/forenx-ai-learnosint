@@ -8,7 +8,8 @@ const {
     headerScan,
     sslScan,
     robotsScan,
-    fullReconScan
+    fullReconScan,
+    terminalCommand
 } = require("../controllers/reconController");
 const {
     protect,
@@ -26,4 +27,5 @@ router.post("/technology", protect, technologyScan);
 router.post("/metadata", protect, metadataScan);
 router.post("/whois", protect, whoisScan);
 router.post("/fullscan", protect, fullReconScan);
+router.post("/terminal", protect, terminalCommand);
 module.exports = router;
