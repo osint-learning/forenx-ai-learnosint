@@ -117,7 +117,7 @@ const fullReconScan = asyncHandler(async (req, res) => {
 
 });
 const terminalCommand = asyncHandler(async (req, res) => {
-    const { command, practiceTool } = req.body;
+    const { command, practiceTool, labId } = req.body;
 
     if (!command || typeof command !== "string") {
         return res.status(400).json({
@@ -143,7 +143,6 @@ const terminalCommand = asyncHandler(async (req, res) => {
         "fullscan",
     ];
 
-    // Check whether the command itself is supported
     if (!allowedCommands.includes(action)) {
         return res.status(400).json({
             success: false,
@@ -161,13 +160,6 @@ const terminalCommand = asyncHandler(async (req, res) => {
 
     /*
      * TOOL-SPECIFIC PRACTICE LAB VALIDATION
-     *
-     * If practiceTool is provided, the student is inside
-     * a tool-specific Practice Lab.
-     *
-     * Example:
-     * practiceTool = "WHOIS"
-     * allowed command = "whois"
      */
 
     if (practiceTool) {
@@ -251,11 +243,71 @@ const terminalCommand = asyncHandler(async (req, res) => {
             });
     }
 
+    /*
+     * PERSIST COMMAND OBJECTIVE
+     *
+     * Only do this when labId is provided.
+     * Normal Recon/Terminal usage is unaffected.
+     */
+
+    if (labId && req.user?._id) {
+        const Lab = require("../models/Lab");
+        const LabProgress = require("../models/LabProgress");
+
+        const lab = await Lab.findOne({
+            _id: labId,
+            isActive: true,
+        });
+
+        if (lab) {
+            const commandObjectiveIndex =
+                lab.objectives.findIndex(
+                    objective => objective.type === "command"
+                );
+
+            if (commandObjectiveIndex !== -1) {
+                let progress = await LabProgress.findOne({
+                    user: req.user._id,
+                    lab: lab._id,
+                });
+
+                if (!progress) {
+                    progress = await LabProgress.create({
+                        user: req.user._id,
+                        lab: lab._id,
+                        objectives: [],
+                    });
+                }
+
+                const existingObjective =
+                    progress.objectives.find(
+                        item =>
+                            item.objectiveIndex ===
+                            commandObjectiveIndex
+                    );
+
+                if (existingObjective) {
+                    existingObjective.completed = true;
+                    existingObjective.answer = action;
+                } else {
+                    progress.objectives.push({
+                        objectiveIndex: commandObjectiveIndex,
+                        completed: true,
+                        answer: action,
+                    });
+                }
+
+                await progress.save();
+            }
+        }
+    }
+
     res.json({
         success: true,
         command: action,
         target,
         practiceTool: practiceTool || null,
+        labId: labId || null,
         data,
         timestamp: new Date().toISOString(),
     });

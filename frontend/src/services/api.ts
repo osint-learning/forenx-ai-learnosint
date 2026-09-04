@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport } from '../types';
-import { INITIAL_CAPSULES, INITIAL_LABS, INITIAL_THREAT_MARKERS } from '../constants';
+import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
@@ -63,14 +63,189 @@ export const OsintService = {
     }
   },
 
-  async getPracticeLabs(): Promise<PracticeLab[]> {
-    try {
-      const response = await apiClient.get<PracticeLab[]>('/labs');
-      return response.data;
-    } catch {
-      return INITIAL_LABS;
+async getPracticeLabs(): Promise<PracticeLab[]> {
+
+  const token =
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error(
+      "Please login before loading Practice Labs."
+    );
+  }
+
+  try {
+
+    const response =
+      await apiClient.get("/labs", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+    const labs = response.data.data;
+    console.log("LAB DATA FROM BACKEND:", labs);
+    return labs.map((lab: any) => {
+
+      // Progress saved for this user
+      const savedProgress =
+        lab.progress || {};
+
+      const savedObjectives =
+        savedProgress.objectives || [];
+
+
+      return {
+
+        id: lab._id,
+
+        title: lab.title,
+
+        category: lab.category,
+
+        difficulty: lab.difficulty,
+
+        xpReward: lab.xpReward,
+
+        targetDomainOrIp: lab.target,
+
+        missionBrief: lab.missionBrief,
+
+        toolId:
+          lab.tool?.toLowerCase(),
+
+        toolName:
+          lab.tool,
+
+        requiredCommand:
+          lab.requiredCommand,
+
+
+        objectives:
+          (lab.objectives || []).map(
+            (objective: any, index: number) => {
+
+              const savedObjective =
+                savedObjectives.find(
+                  (item: any) =>
+                    item.objectiveIndex === index
+                );
+
+
+              return {
+
+                id:
+                  `${lab._id}-objective-${index + 1}`,
+
+                task:
+                  objective.question,
+
+                type:
+                  objective.type === "command"
+                    ? "command"
+                    : "answer",
+
+                // Use MongoDB progress
+                completed:
+                  savedObjective?.completed ||
+                  objective.completed ||
+                  false,
+
+                hint:
+                  objective.type === "command"
+                    ? `Use the ${lab.tool} command against the target.`
+                    : `Identify the ${objective.expectedField} from the real command output.`,
+
+                requiredCommandPattern:
+                  objective.type === "command"
+                    ? lab.requiredCommand
+                    : undefined,
+              };
+            }
+          ),
+
+
+        evidenceFiles: [],
+
+        hints:
+          lab.hints || [],
+
+      };
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Failed to load Practice Labs:",
+      error
+    );
+
+    throw error;
+  }
+},
+
+async evaluateLabAnswer(
+  labId: string,
+  objectiveIndex: number,
+  answer: string,
+  output: any
+): Promise<any> {
+
+  const token =
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error(
+      "Please login before evaluating your answer."
+    );
+  }
+
+  const response = await apiClient.post(
+    `/labs/${labId}/evaluate`,
+    {
+      objectiveIndex,
+      answer,
+      output,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
-  },
+  );
+
+  return response.data;
+},
+
+async resetLabProgress(
+  labId: string
+): Promise<any> {
+
+  const token =
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error(
+      "Please login before resetting the Practice Lab."
+    );
+  }
+
+  const response =
+    await apiClient.post(
+      `/labs/${labId}/reset`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+  return response.data;
+},
 
   async executeReconScan(target: string): Promise<any> {
     try {
@@ -140,14 +315,18 @@ export const OsintService = {
 
 async executeTerminalCommand(
   command: string,
-  practiceTool?: string
+  practiceTool?: string,
+  labId?: string
 ): Promise<any> {
+
   const token =
     sessionStorage.getItem("token") ||
     localStorage.getItem("token");
 
   if (!token) {
-    throw new Error("Please login before using the Practice Lab.");
+    throw new Error(
+      "Please login before using the Practice Lab."
+    );
   }
 
   const response = await apiClient.post(
@@ -155,6 +334,7 @@ async executeTerminalCommand(
     {
       command,
       practiceTool: practiceTool || null,
+      labId: labId || null,
     },
     {
       headers: {

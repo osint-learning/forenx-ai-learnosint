@@ -13,6 +13,7 @@ const quizRoutes = require("./routes/quizRoutes");
 const lessonProgressRoutes = require("./routes/lessonProgressRoutes");
 
 const metadataRoutes = require("./routes/metadataRoutes");
+const labRoutes = require("./routes/labRoutes");
 // Fix MongoDB Atlas DNS resolution
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
@@ -45,6 +46,7 @@ app.use("/api/lessons", lessonRoutes);
 app.use("/api/quizzes", quizRoutes);
 app.use("/api/lesson-progress", lessonProgressRoutes);
 app.use("/api/metadata", metadataRoutes);
+app.use("/api/labs", labRoutes);
 // Root Route
 app.get("/", (req, res) => {
     res.json({

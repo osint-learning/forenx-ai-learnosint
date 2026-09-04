@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Terminal as TerminalIcon, Play, RefreshCw } from 'lucide-react';
+import {
+  Terminal as TerminalIcon,
+  Play,
+  RefreshCw
+} from 'lucide-react';
 import { GlowButton } from '../ui/GlowButton';
 import { OsintService } from '../../services/api';
 
@@ -13,14 +17,21 @@ interface CommandOutput {
 interface InteractiveTerminalProps {
   initialTarget?: string;
   practiceTool?: string;
-  onCommandRun?: (cmd: string) => void;
+  labId?: string;
+
+  onCommandRun?: (
+    cmd: string,
+    response?: any
+  ) => void;
 }
 
 export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
   initialTarget = 'example.com',
   practiceTool,
+  labId,
   onCommandRun
 }) => {
+
   const [history, setHistory] = useState<CommandOutput[]>([
     {
       command: 'sysinfo',
@@ -36,13 +47,22 @@ export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // --------------------------------------------------
+  // AUTO SCROLL
+  // --------------------------------------------------
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
       behavior: 'smooth'
     });
   }, [history]);
 
+  // --------------------------------------------------
+  // FORMAT OUTPUT
+  // --------------------------------------------------
+
   const formatOutput = (data: any): string => {
+
     if (typeof data === 'string') {
       return data;
     }
@@ -54,7 +74,12 @@ export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
     }
   };
 
+  // --------------------------------------------------
+  // HANDLE COMMAND
+  // --------------------------------------------------
+
   const handleCommand = async (e: React.FormEvent) => {
+
     e.preventDefault();
 
     const cmd = currentInput.trim();
@@ -63,18 +88,26 @@ export const InteractiveTerminal: React.FC<InteractiveTerminalProps> = ({
       return;
     }
 
-    onCommandRun?.(cmd);
-
     const timeStr = new Date().toLocaleTimeString();
 
-    // Local terminal command
+    // ------------------------------------------------
+    // LOCAL COMMAND: CLEAR
+    // ------------------------------------------------
+
     if (cmd.toLowerCase() === 'clear') {
+
       setHistory([]);
       setCurrentInput('');
+
       return;
     }
 
+    // ------------------------------------------------
+    // LOCAL COMMAND: HELP
+    // ------------------------------------------------
+
     if (cmd.toLowerCase() === 'help') {
+
       const helpOutput = `AVAILABLE COMMANDS
 
   dns <domain>          - DNS and domain information
@@ -95,6 +128,7 @@ EXAMPLE
   dns ${initialTarget}
   technology ${initialTarget}
   ssl ${initialTarget}
+  whois ${initialTarget}
   fullscan ${initialTarget}`;
 
       setHistory(prev => [
@@ -108,8 +142,13 @@ EXAMPLE
       ]);
 
       setCurrentInput('');
+
       return;
     }
+
+    // ------------------------------------------------
+    // SHOW EXECUTION MESSAGE
+    // ------------------------------------------------
 
     setHistory(prev => [
       ...prev,
@@ -124,14 +163,36 @@ EXAMPLE
     setCurrentInput('');
     setIsExecuting(true);
 
+    // ------------------------------------------------
+    // EXECUTE REAL BACKEND COMMAND
+    // ------------------------------------------------
+
     try {
-      const response = await OsintService.executeTerminalCommand(
+
+      const response =
+        await OsintService.executeTerminalCommand(
+          cmd,
+          practiceTool,
+          labId
+        );
+
+      // ------------------------------------------------
+      // SEND REAL RESPONSE TO PRACTICE LAB
+      // ------------------------------------------------
+
+      onCommandRun?.(
         cmd,
-        practiceTool
+        response
       );
-      const output = response?.data
-        ? formatOutput(response.data)
-        : formatOutput(response);
+
+      // ------------------------------------------------
+      // DISPLAY REAL OUTPUT
+      // ------------------------------------------------
+
+      const output =
+        response?.data
+          ? formatOutput(response.data)
+          : formatOutput(response);
 
       setHistory(prev => [
         ...prev,
@@ -142,11 +203,22 @@ EXAMPLE
           type: 'success'
         }
       ]);
+
     } catch (error: any) {
+
       const message =
         error?.response?.data?.message ||
         error?.message ||
         'Command execution failed.';
+
+      // Send failed command information too
+      onCommandRun?.(
+        cmd,
+        error?.response?.data || {
+          success: false,
+          error: message
+        }
+      );
 
       setHistory(prev => [
         ...prev,
@@ -157,28 +229,43 @@ EXAMPLE
           type: 'error'
         }
       ]);
+
     } finally {
+
       setIsExecuting(false);
+
     }
   };
+
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
 
   return (
     <div className="liquid-glass rounded-xl overflow-hidden border border-[#00ff99]/30 shadow-[0_0_30px_rgba(0,255,153,0.2)] flex flex-col h-full min-h-[420px]">
 
       {/* Terminal Header */}
+
       <div className="bg-[#052d1d]/80 px-4 py-2.5 border-b border-[#00ff99]/20 flex items-center justify-between">
 
         <div className="flex items-center gap-2">
 
           <div className="flex gap-1.5">
+
             <span className="w-3 h-3 rounded-full bg-rose-500/80" />
+
             <span className="w-3 h-3 rounded-full bg-amber-500/80" />
+
             <span className="w-3 h-3 rounded-full bg-[#00ff99]/80" />
+
           </div>
 
           <span className="text-xs font-mono font-bold text-[#00ff99] ml-2 flex items-center gap-1.5">
+
             <TerminalIcon size={14} />
+
             root@forenx-terminal:~
+
           </span>
 
         </div>
@@ -188,19 +275,28 @@ EXAMPLE
           className="text-xs font-mono text-slate-400 hover:text-[#00ff99] flex items-center gap-1 transition-colors cursor-pointer"
           disabled={isExecuting}
         >
+
           <RefreshCw size={12} />
+
           Clear
+
         </button>
 
       </div>
 
       {/* Terminal Output */}
+
       <div className="flex-1 p-4 overflow-y-auto bg-black/90 font-mono text-xs space-y-3">
 
         {history.map((item, index) => (
-          <div key={index} className="space-y-1">
+
+          <div
+            key={index}
+            className="space-y-1"
+          >
 
             {item.command && (
+
               <div className="flex items-center gap-2 text-slate-400">
 
                 <span className="text-[#00ff99] font-bold">
@@ -216,6 +312,7 @@ EXAMPLE
                 </span>
 
               </div>
+
             )}
 
             <pre
@@ -231,12 +328,15 @@ EXAMPLE
             </pre>
 
           </div>
+
         ))}
 
         {isExecuting && (
+
           <div className="text-[#00ff99] animate-pulse">
             Running reconnaissance...
           </div>
+
         )}
 
         <div ref={bottomRef} />
@@ -244,6 +344,7 @@ EXAMPLE
       </div>
 
       {/* Terminal Input */}
+
       <form
         onSubmit={handleCommand}
         className="bg-black border-t border-[#00ff99]/30 p-3 flex items-center gap-2"
@@ -258,7 +359,7 @@ EXAMPLE
           value={currentInput}
           onChange={e => setCurrentInput(e.target.value)}
           disabled={isExecuting}
-          placeholder={`Try: dns ${initialTarget}`}
+          placeholder={`Try: whois ${initialTarget}`}
           className="flex-1 bg-transparent text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none"
         />
 

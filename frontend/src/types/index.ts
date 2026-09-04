@@ -66,8 +66,14 @@ export interface LearningCapsule {
 export interface LabObjective {
   id: string;
   task: string;
+
+  // Defines how the objective is completed
+  type: 'command' | 'answer';
+
   completed: boolean;
   hint: string;
+
+  // Used for command-specific objectives
   requiredCommandPattern?: string;
 }
 
