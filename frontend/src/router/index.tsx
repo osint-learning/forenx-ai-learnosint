@@ -13,6 +13,7 @@ import { InvestigationWorkspace } from "../pages/InvestigationWorkspace";
 import { ThreatIntelligence } from "../pages/ThreatIntelligence";
 import { Reports } from "../pages/Reports";
 import { Profile } from "../pages/Profile";
+import { IndependentTerminal } from "../pages/IndependentTerminal";
 
 import { Login } from "../pages/Login";
 import { Register } from "../pages/Register";
@@ -67,6 +68,15 @@ export const AppRouter: React.FC = () => {
         }
       />
 
+        <Route
+          path="/terminal"
+          element={
+            <ProtectedRoute>
+              <IndependentTerminal />
+            </ProtectedRoute>
+          }
+        />
+
       <Route
         path="/practice-labs"
         element={
@@ -120,6 +130,8 @@ export const AppRouter: React.FC = () => {
           </ProtectedRoute>
         }
       />
+
+
 
       {/* Unknown Route */}
       <Route

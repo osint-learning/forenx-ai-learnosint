@@ -23,7 +23,7 @@ export const Navbar: React.FC = () => {
     { label: 'Learn', path: '/learn' },
     { label: 'Tool Explorer', path: '/tool-explorer' },
     { label: 'Recon Engine', path: '/recon' },
-    { label: 'Practice Labs', path: '/practice-labs' },
+    { label: "Terminal", path: "/terminal" },
     { label: 'Investigations', path: '/investigations' },
     { label: 'Reports', path: '/reports' },
     { label: 'Profile', path: '/profile' }
