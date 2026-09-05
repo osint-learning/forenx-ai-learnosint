@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X, ChevronLeft, ChevronRight, Terminal } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { GlassCard } from "../ui/GlassCard";
 import { GlowButton } from "../ui/GlowButton";
 import { CheckCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import * as LessonProgressService from "../../services/lessonProgressService";
 
 interface LessonViewerProps {
@@ -21,7 +20,6 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
   onSelectLesson,
 }) => {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
@@ -31,7 +29,7 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
       try {
         const completedStatus =
           await LessonProgressService.isLessonCompleted(
-            lesson.tool,
+            lesson.tool?._id || lesson.tool,
             lesson._id,
             token
           );
@@ -66,7 +64,7 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
 
       await LessonProgressService.completeLesson(
         lesson._id,
-        lesson.tool,
+        lesson.tool?._id || lesson.tool,
         token
       );
 
@@ -165,21 +163,6 @@ export const LessonViewer: React.FC<LessonViewerProps> = ({
   </GlowButton>
 
   <div className="flex flex-wrap gap-3">
-
-    <GlowButton
-      variant="primary"
-      icon={<Terminal size={18} />}
-      onClick={() => {
-        navigate(
-          `/practice-labs?tool=${encodeURIComponent(
-            lesson.toolName || lesson.tool || ""
-          )}`
-        );
-      }}
-    >
-      Practice Lab
-    </GlowButton>
-
     <GlowButton
       variant="primary"
       icon={<CheckCircle size={18} />}
