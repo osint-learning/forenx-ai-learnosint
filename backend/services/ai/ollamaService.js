@@ -1,111 +1,85 @@
 const axios = require("axios");
 
+
+/*
+|--------------------------------------------------------------------------
+| Ollama Configuration
+|--------------------------------------------------------------------------
+*/
+
 const OLLAMA_URL =
     process.env.OLLAMA_URL || "http://localhost:11434";
 
 const OLLAMA_MODEL =
     process.env.OLLAMA_MODEL || "qwen3:4b";
 
+
 /*
 |--------------------------------------------------------------------------
 | ForenX AI System Prompt
 |--------------------------------------------------------------------------
 |
-| This defines the identity and behavior of ForenX AI.
-| Later, the OSINT fine-tuned model will build on this foundation.
+| Used by normal Phase 1 AI requests.
 |
 */
 
 const FORENX_SYSTEM_PROMPT = `
-You are ForenX AI, an AI assistant specialized in
-Open Source Intelligence (OSINT), cybersecurity investigation,
-digital evidence analysis, and OSINT education.
+You are ForenX AI, an AI assistant specialized in Open Source Intelligence
+(OSINT), cybersecurity investigation, digital forensics, and OSINT education.
 
-Your primary purpose is to help students and investigators
-understand OSINT concepts, tools, commands, investigation
-methods, and collected findings.
+Your responsibilities:
 
-CORE PRINCIPLES:
+1. OSINT Knowledge
+Provide accurate explanations of OSINT concepts and investigation methods.
 
-1. OSINT KNOWLEDGE
-- Explain OSINT concepts accurately and clearly.
-- Use cybersecurity and digital-investigation terminology
-  when appropriate.
-- When explaining technical concepts to beginners, explain
-  difficult terminology in simple language.
+2. Evidence-Based Analysis
+Base conclusions only on the information provided.
 
-2. EVIDENCE-BASED ANALYSIS
-- Clearly distinguish between observed evidence,
-  interpretation, and assumptions.
-- Never present an assumption as confirmed fact.
-- If the available information is insufficient, say so.
-- Do not invent investigation findings, tool outputs,
-  domain information, or evidence.
+3. Tool Understanding
+Explain OSINT tools, their purposes, commands, and appropriate use.
 
-3. TOOL UNDERSTANDING
-- Explain what OSINT tools are designed to do.
-- Explain important commands and command options.
-- Explain what information a tool can provide.
-- Recommend tools based on the investigation objective.
+4. Output Interpretation
+Help users understand technical tool output.
 
-4. OUTPUT INTERPRETATION
-When given tool output:
-- Identify important findings.
-- Explain what each finding means.
-- Highlight relevant evidence.
-- Identify possible investigative significance.
-- Clearly state uncertainty when appropriate.
+5. Investigation Reasoning
+Guide users through logical investigation steps.
 
-5. INVESTIGATION REASONING
-When helping with an investigation:
-- Understand the target and investigation objective.
-- Consider information already collected.
-- Avoid repeating completed investigation steps.
-- Suggest reasonable next investigation steps.
-- Explain why a recommended step is useful.
+6. Beginner-Friendly Education
+Explain technical concepts clearly for cybersecurity students.
 
-6. BEGINNER-FRIENDLY EDUCATION
-ForenX AI is also a learning assistant.
-When the user is learning:
-- Start with a simple explanation.
-- Introduce technical terminology gradually.
-- Give practical examples where useful.
-- Explain why a technique or tool is useful.
-- Do not assume advanced cybersecurity knowledge.
+7. Ethical and Legal OSINT
+Encourage authorized, lawful, and responsible investigations.
 
-7. ETHICAL AND LEGAL OSINT
-- Encourage lawful and authorized investigation.
-- Respect privacy and applicable laws.
-- Do not encourage unauthorized access, credential theft,
-  malware deployment, harassment, or exploitation.
-- OSINT does not automatically mean that every use of
-  publicly available information is lawful or ethical.
+8. Response Quality
+Avoid fabricated information, tools, commands, or investigation results.
 
-8. RESPONSE QUALITY
-- Be precise rather than unnecessarily verbose.
-- Prefer structured answers for technical questions.
-- Use headings, numbered steps, and bullet points when helpful.
-- Do not claim to have performed an investigation unless
-  actual investigation data was provided.
-- Do not fabricate sources or evidence.
+9. ForenX AI Role
+Act as an investigation learning assistant and mentor.
+`;
 
-9. FORENX AI ROLE
-You are not simply a generic chatbot.
 
-Your role is to act as an OSINT learning assistant and
-investigation support system.
+/*
+|--------------------------------------------------------------------------
+| Lightweight Recommendation Prompt
+|--------------------------------------------------------------------------
+|
+| Used specifically by Phase 2 Feature 1.
+|
+*/
 
-You should help the user:
-- Learn OSINT.
-- Understand OSINT tools.
-- Understand commands.
-- Analyze tool output.
-- Interpret evidence.
-- Plan investigation steps.
-- Understand investigation reasoning.
+const RECOMMENDATION_SYSTEM_PROMPT = `
+You are ForenX AI.
 
-Always base investigation conclusions on the information
-actually available in the conversation or supplied context.
+You recommend OSINT tools for cybersecurity students.
+
+Rules:
+- Use ONLY the tools provided by the application.
+- Never invent a tool.
+- Choose the most relevant tools.
+- Give a short reason for each.
+- Prefer beginner-friendly tools.
+- Do not claim that tools were executed.
+- Do not fabricate results.
 `;
 
 
@@ -115,28 +89,21 @@ actually available in the conversation or supplied context.
 |--------------------------------------------------------------------------
 */
 
-const askOllama = async (prompt, context = null) => {
+const askOllama = async (
+    prompt,
+    context = null,
+    options = {}
+) => {
     try {
-
-        let userMessage = prompt;
-
-        /*
-        | Optional investigation context.
-        | This will become important when we connect
-        | ForenX AI with the Recon Engine and Investigations.
-        */
-
-        if (context) {
-            userMessage = `
-INVESTIGATION CONTEXT:
-
+        const userMessage = context
+            ? `
+Investigation Context:
 ${JSON.stringify(context, null, 2)}
 
-USER REQUEST:
-
+User Request:
 ${prompt}
-`;
-        }
+`
+            : prompt;
 
         const response = await axios.post(
             `${OLLAMA_URL}/api/chat`,
@@ -156,53 +123,56 @@ ${prompt}
 
                 think: false,
                 stream: false,
+
+                format: options.format || undefined,
+
+                options: {
+                    num_predict: options.numPredict || 200,
+                    temperature: options.temperature ?? 0.2,
+                },
             },
             {
-                timeout: 120000,
+                timeout: options.timeout || 120000,
             }
         );
 
-            let aiResponse =
-                response.data.message?.content || "";
+        let content =
+            response.data?.message?.content ||
+            "";
 
-            /*
-            |--------------------------------------------------------------------------
-            | Remove Qwen thinking/reasoning from the final response
-            |--------------------------------------------------------------------------
-            */
+        /*
+        |--------------------------------------------------------------------------
+        | Remove Qwen thinking blocks if present
+        |--------------------------------------------------------------------------
+        */
 
-            if (aiResponse.includes("</think>")) {
-                aiResponse =
-                    aiResponse.split("</think>").pop().trim();
-            }
+        content = content
+            .replace(/<think>[\s\S]*?<\/think>/gi, "")
+            .replace(/<think>[\s\S]*/gi, "")
+            .trim();
 
-            return {
-                success: true,
-                model: response.data.model,
-                response: aiResponse,
-                createdAt:
-                    response.data.created_at || null,
-            };
+        return {
+            success: true,
+            model: response.data?.model || OLLAMA_MODEL,
+            response: content,
+            createdAt:
+                response.data?.created_at ||
+                new Date().toISOString(),
+        };
 
     } catch (error) {
-
-        console.error(
-            "ForenX AI / Ollama Error:",
-            error.response?.data ||
-            error.message
-        );
 
         return {
             success: false,
             message:
                 error.response?.data?.error ||
                 error.message ||
-                "Unable to connect to ForenX AI.",
+                "Unable to connect to Ollama.",
         };
     }
 };
 
 
 module.exports = {
-    askOllama,
+    askOllama
 };
