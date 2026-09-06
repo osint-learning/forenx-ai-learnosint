@@ -3,3 +3,16 @@ node_modules/
 dist/
 build/
 coverage/
+
+# Python virtual environments
+ai-service/training-venv/
+ai-service/venv/
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Unsloth compiled cache
+ai-service/unsloth_compiled_cache/

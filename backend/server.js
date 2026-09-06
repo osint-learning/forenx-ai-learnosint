@@ -41,6 +41,7 @@ app.use(morgan("dev"));
 app.use("/api", require("./routes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/recon", require("./routes/reconRoutes"));
+app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/tools", toolRoutes);
 app.use("/api/lessons", lessonRoutes);
 app.use("/api/quizzes", quizRoutes);
