@@ -474,48 +474,59 @@ const recommendTools = asyncHandler(async (req, res) => {
     |--------------------------------------------------------------------------
     */
 
-    const prompt = `
+const prompt = `
 You are ForenX AI, an OSINT learning assistant.
 
-Investigation objective:
+Your task is to recommend the most useful OSINT tools for the student's investigation objective.
+
+INVESTIGATION OBJECTIVE:
 ${cleanObjective}
 
-Detected investigation type:
+DETECTED INVESTIGATION TYPE:
 ${detectedIntent}
 
-Available relevant tools:
-${JSON.stringify(toolCatalogue)}
+AVAILABLE FORENX TOOLS:
+${JSON.stringify(toolCatalogue, null, 2)}
 
-Recommend the most useful tools for this investigation.
+REQUIREMENTS:
 
-Rules:
-- Recommend ONLY tools from the available list.
-- Never invent a tool.
-- Do not recommend unrelated tools.
-- Explain why each recommended tool is useful.
-- Prefer beginner-friendly tools when appropriate.
-- Give a logical investigation order.
-- Do not claim that any tool was executed.
-- Do not fabricate investigation results.
-- Use only the exact tool names provided.
-- Do not include tools that are not in the available list.
-
-Keep the answer short.
-
-Format:
-
-RECOMMENDED TOOLS:
-1. Tool name - reason - difficulty
-2. Tool name - reason - difficulty
-3. Tool name - reason - difficulty
-
-INVESTIGATION ORDER:
-1. First step
-2. Second step
-3. Third step
+1. Recommend only tools from AVAILABLE FORENX TOOLS.
+2. Never invent a tool.
+3. Use the exact tool names provided.
+4. Recommend only tools relevant to the investigation objective.
+5. Explain briefly why each recommended tool is useful.
+6. Prefer beginner-friendly tools when appropriate.
+7. Provide a logical investigation order.
+8. Do not claim that any tool was executed.
+9. Do not fabricate investigation results.
+10. Do not include internal reasoning or analysis.
+11. Do not write an introduction.
+12. Keep explanations concise.
+13. Return ONLY valid JSON.
 
 IMPORTANT:
-Mention authorization or limitations when relevant.
+- Every tool name MUST exactly match a tool in AVAILABLE FORENX TOOLS.
+- Never mention a tool that is not in the available list.
+- Do not output reasoning such as "we are given", "I think", or "the model should".
+- Do not output Markdown.
+- Do not output text outside the JSON object.
+
+Return exactly this JSON structure:
+
+{
+  "recommendations": [
+    {
+      "tool": "exact tool name",
+      "reason": "short reason why this tool is useful",
+      "difficulty": "Beginner/Intermediate/Advanced"
+    }
+  ],
+  "investigationOrder": [
+    "first investigation step",
+    "second investigation step",
+    "third investigation step"
+  ]
+}
 `;
 
 
@@ -527,9 +538,10 @@ Mention authorization or limitations when relevant.
 
     const result = await askOllama(prompt, null, {
         lightweight: true,
-        numPredict: 180,
+        numPredict: 300,
         temperature: 0.1,
-        timeout: 120000
+        timeout: 120000,
+        format: "json"
     });
 
 
@@ -546,6 +558,37 @@ Mention authorization or limitations when relevant.
         });
     }
 
+    let recommendation;
+
+    try {
+        recommendation = JSON.parse(result.response);
+    } catch (error) {
+        return res.status(502).json({
+            success: false,
+            message: "AI returned invalid tool recommendation JSON.",
+            rawResponse: result.response,
+        });
+    }
+
+    if (
+        !recommendation ||
+        !Array.isArray(recommendation.recommendations) ||
+        !Array.isArray(recommendation.investigationOrder)
+    ) {
+        return res.status(502).json({
+            success: false,
+            message: "AI returned an invalid tool recommendation format.",
+            rawResponse: result.response,
+        });
+    }
+
+    recommendation.recommendations = recommendation.recommendations
+        .map((item) => ({
+            tool: item.tool,
+            reason: item.reason || item.description || "",
+            difficulty: item.difficulty,
+        }))
+        .filter((item) => item.tool && item.reason);
 
     /*
     |--------------------------------------------------------------------------
@@ -557,7 +600,8 @@ Mention authorization or limitations when relevant.
         success: true,
         objective: cleanObjective,
         detectedIntent,
-        recommendations: result.response,
+        recommendations: recommendation.recommendations,
+        investigationOrder: recommendation.investigationOrder,
         model: result.model,
         availableToolCount: tools.length,
         analysedToolCount: selectedTools.length,
@@ -1682,6 +1726,8 @@ You must:
 6. Base your feedback ONLY on the supplied quiz results.
 7. Do not claim that the student used a tool.
 8. Do not invent additional quiz questions or facts.
+9. If the student has no weaknesses, return an empty array for areasToImprove.
+10. Never put an empty string inside areasToImprove.
 
 Return ONLY valid JSON.
 
@@ -1692,9 +1738,7 @@ Use exactly this structure:
   "strengths": [
     "strength 1"
   ],
-  "areasToImprove": [
-    "area 1"
-  ],
+  "areasToImprove": [],
   "learningAdvice": [
     "advice 1"
   ],
@@ -1854,7 +1898,31 @@ const evaluateAILab = asyncHandler(async (req, res) => {
         .select(
             "title description tool category difficulty target missionBrief requiredCommand objectives hints xpReward"
         )
+    .lean();
+
+
+    // ======================================================
+    // GET ACTUAL TOOL COMMANDS
+    // ======================================================
+
+    const toolData = await Tool.findOne({
+        name: {
+            $regex: `^${lab.tool.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $options: "i",
+        },
+    })
+        .select("name commands syntax")
         .lean();
+
+
+    const allowedCommands = [
+        ...(toolData?.commands || []).map(
+            item => item.command
+        ),
+        ...(toolData?.syntax
+            ? [toolData.syntax]
+            : []),
+    ].filter(Boolean);
 
 
     if (!lab) {
@@ -1973,6 +2041,9 @@ Evaluate the student's performance in the following OSINT practice lab.
 LAB INFORMATION:
 ${JSON.stringify(labInformation, null, 2)}
 
+AVAILABLE TOOL COMMANDS:
+${JSON.stringify(allowedCommands, null, 2)}
+
 STUDENT LAB PROGRESS:
 ${JSON.stringify(studentProgress, null, 2)}
 
@@ -2001,6 +2072,11 @@ You must:
 10. Do not claim that a command was executed unless the supplied results explicitly show it.
 11. Do not change the correctness of the supplied objective results.
 12. Do not reveal hidden information that is not present in the supplied data.
+13. Never invent a command.
+14. Never invent command options or flags.
+15. Only mention commands or options that appear in AVAILABLE TOOL COMMANDS.
+16. If command-specific advice is not supported by AVAILABLE TOOL COMMANDS, give general guidance about inspecting the existing command output instead.
+17. Do not recommend modifying a command with an unsupported flag.
 
 Return ONLY valid JSON.
 
@@ -2186,6 +2262,312 @@ IMPORTANT:
 
 /*
 |--------------------------------------------------------------------------
+| AI Investigation Hint
+|--------------------------------------------------------------------------
+| Phase 2 - Feature 19
+|--------------------------------------------------------------------------
+*/
+
+const generateAIHint = asyncHandler(async (req, res) => {
+
+    const {
+        labId,
+        objectiveIndex,
+        attempt = 1,
+    } = req.body || {};
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate input
+    |--------------------------------------------------------------------------
+    */
+
+    if (!labId) {
+        return res.status(400).json({
+            success: false,
+            message: "Lab ID is required.",
+        });
+    }
+
+    if (
+        objectiveIndex === undefined ||
+        objectiveIndex === null
+    ) {
+        return res.status(400).json({
+            success: false,
+            message: "Objective index is required.",
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get lab
+    |--------------------------------------------------------------------------
+    */
+
+    const lab = await Lab.findOne({
+        _id: labId,
+        isActive: true,
+    })
+        .select(
+            "title description tool category difficulty target missionBrief requiredCommand objectives hints"
+        )
+        .lean();
+
+
+    if (!lab) {
+        return res.status(404).json({
+            success: false,
+            message: "Lab not found.",
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get objective
+    |--------------------------------------------------------------------------
+    */
+
+    const objective =
+        lab.objectives[Number(objectiveIndex)];
+
+
+    if (!objective) {
+        return res.status(404).json({
+            success: false,
+            message: "Objective not found.",
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get student progress
+    |--------------------------------------------------------------------------
+    */
+
+    const progress =
+        await LabProgress.findOne({
+            user: req.user._id,
+            lab: lab._id,
+        }).lean();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find previous objective attempts
+    |--------------------------------------------------------------------------
+    */
+
+    const objectiveProgress =
+        progress?.objectives?.find(
+            item =>
+                item.objectiveIndex ===
+                Number(objectiveIndex)
+        );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare contextual information
+    |--------------------------------------------------------------------------
+    */
+
+    const context = {
+
+        lab: {
+            title: lab.title,
+            description: lab.description || "",
+            tool: lab.tool,
+            category: lab.category || "OSINT",
+            difficulty: lab.difficulty,
+            target: lab.target,
+            missionBrief: lab.missionBrief,
+            requiredCommand: lab.requiredCommand,
+        },
+
+        objective: {
+            index: Number(objectiveIndex),
+            question: objective.question,
+            type: objective.type,
+            expectedField: objective.expectedField,
+        },
+
+        studentProgress: {
+            labCompleted:
+                progress?.completed || false,
+
+            objectiveCompleted:
+                objectiveProgress?.completed || false,
+
+            previousAnswer:
+                objectiveProgress?.answer || "",
+
+            attempt:
+                Number(attempt) || 1,
+        },
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI Prompt
+    |--------------------------------------------------------------------------
+    */
+
+    const prompt = `
+You are ForenX AI, an OSINT investigation mentor.
+
+A student is working on an OSINT practice lab and needs a hint.
+
+LAB CONTEXT:
+${JSON.stringify(context.lab, null, 2)}
+
+CURRENT OBJECTIVE:
+${JSON.stringify(context.objective, null, 2)}
+
+STUDENT PROGRESS:
+${JSON.stringify(context.studentProgress, null, 2)}
+
+Your task is to provide ONE useful investigation hint.
+
+STRICT RULES:
+
+1. Do NOT give the final answer.
+2. Do NOT reveal the expected value.
+3. Do NOT invent command options or commands.
+4. Only refer to the command/tool information supplied in the lab context.
+5. Guide the student toward where they should look.
+6. Encourage the student to inspect the command output.
+7. Keep the hint beginner-friendly.
+8. Make the hint specific to the current objective.
+9. If the objective asks for a field, tell the student what type of field to look for, but not its actual value.
+10. Do not claim that a command was executed.
+11. Return ONLY valid JSON.
+
+Use exactly this structure:
+
+{
+  "hint": "one concise investigation hint",
+  "guidance": "short explanation of what the student should look for",
+  "nextStep": "one action the student should take"
+}
+
+IMPORTANT:
+- Never provide the actual answer.
+- Never invent a command or command option.
+- Return JSON only.
+`;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ask ForenX AI
+    |--------------------------------------------------------------------------
+    */
+
+    const aiResult = await askOllama(
+        prompt,
+        null,
+        {
+            lightweight: true,
+            numPredict: 220,
+            temperature: 0.1,
+            timeout: 120000,
+            format: "json",
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Handle AI failure
+    |--------------------------------------------------------------------------
+    */
+
+    if (!aiResult.success) {
+        return res.status(503).json({
+            success: false,
+            message: aiResult.message,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parse AI response
+    |--------------------------------------------------------------------------
+    */
+
+    let hint;
+
+    try {
+        hint = JSON.parse(
+            aiResult.response
+        );
+    }
+    catch (error) {
+        return res.status(502).json({
+            success: false,
+            message:
+                "AI returned invalid investigation hint JSON.",
+            rawResponse:
+                aiResult.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate hint
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !hint ||
+        typeof hint.hint !== "string" ||
+        typeof hint.guidance !== "string" ||
+        typeof hint.nextStep !== "string"
+    ) {
+        return res.status(502).json({
+            success: false,
+            message:
+                "AI returned an invalid investigation hint format.",
+            rawResponse:
+                aiResult.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return hint
+    |--------------------------------------------------------------------------
+    */
+
+    res.json({
+        success: true,
+
+        hint: {
+            labId: lab._id,
+            labTitle: lab.title,
+            tool: lab.tool,
+            objectiveIndex: Number(objectiveIndex),
+            attempt: Number(attempt) || 1,
+
+            ...hint,
+        },
+
+        model: aiResult.model,
+        createdAt: aiResult.createdAt,
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
 | Export
 |--------------------------------------------------------------------------
 */
@@ -2198,4 +2580,5 @@ module.exports = {
     generateAIQuiz,
     evaluateAIQuiz,
     evaluateAILab,
+    generateAIHint,
 };
