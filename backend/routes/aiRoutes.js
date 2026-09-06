@@ -7,6 +7,8 @@ const {
     recommendTools,
     suggestCommand,
     personalizedLearningRecommendations,
+    generateAIQuiz,
+    evaluateAIQuiz,
 } = require("../controllers/aiController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -63,5 +65,28 @@ router.post(
     personalizedLearningRecommendations
 );
 
+/*
+|--------------------------------------------------------------------------
+| AI Quiz Generation
+|--------------------------------------------------------------------------
+*/
+
+router.post(
+    "/generate-quiz",
+    protect,
+    generateAIQuiz
+);
+
+/*
+|--------------------------------------------------------------------------
+| AI Quiz Evaluation
+|--------------------------------------------------------------------------
+*/
+
+router.post(
+    "/evaluate-quiz",
+    protect,
+    evaluateAIQuiz
+);
 
 module.exports = router;

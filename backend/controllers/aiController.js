@@ -1195,6 +1195,611 @@ IMPORTANT:
     }
 );
 
+
+/*
+|--------------------------------------------------------------------------
+| AI Quiz Generation
+|--------------------------------------------------------------------------
+| Phase 2 - Feature 16
+|--------------------------------------------------------------------------
+*/
+
+const generateAIQuiz = asyncHandler(async (req, res) => {
+
+    const {
+        tool,
+        difficulty = "Beginner",
+        questionCount = 5,
+    } = req.body || {};
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate input
+    |--------------------------------------------------------------------------
+    */
+
+    if (!tool || typeof tool !== "string") {
+        return res.status(400).json({
+            success: false,
+            message: "Tool name is required.",
+        });
+    }
+
+
+    const allowedDifficulties = [
+        "Beginner",
+        "Intermediate",
+        "Advanced",
+    ];
+
+    if (!allowedDifficulties.includes(difficulty)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid difficulty level.",
+        });
+    }
+
+
+    const count = Math.min(
+        Math.max(parseInt(questionCount, 10) || 5, 1),
+        10
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find actual tool from MongoDB
+    |--------------------------------------------------------------------------
+    */
+
+    const toolData = await Tool.findOne({
+        name: {
+            $regex: `^${tool.trim()}$`,
+            $options: "i",
+        },
+    })
+        .select(
+            "name category shortDescription description purpose whenToUse difficulty syntax commands examples sampleOutput outputExplanation advantages limitations bestPractices tags relatedTools"
+        )
+        .lean();
+
+
+    if (!toolData) {
+        return res.status(404).json({
+            success: false,
+            message: `Tool "${tool}" was not found in ForenX.`,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare tool knowledge for AI
+    |--------------------------------------------------------------------------
+    */
+
+    const toolKnowledge = {
+        name: toolData.name,
+        category: toolData.category,
+        description: toolData.shortDescription || "",
+        detailedDescription: toolData.description || "",
+        purpose: toolData.purpose || "",
+        whenToUse: toolData.whenToUse || "",
+        difficulty: toolData.difficulty || "Beginner",
+        syntax: toolData.syntax || "",
+        commands: toolData.commands || [],
+        examples: toolData.examples || [],
+        sampleOutput: toolData.sampleOutput || "",
+        outputExplanation: toolData.outputExplanation || "",
+        advantages: toolData.advantages || [],
+        limitations: toolData.limitations || [],
+        bestPractices: toolData.bestPractices || [],
+        tags: toolData.tags || [],
+        relatedTools: toolData.relatedTools || [],
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI Prompt
+    |--------------------------------------------------------------------------
+    */
+
+    const prompt = `
+You are ForenX AI, an OSINT learning assistant.
+
+Generate a multiple-choice quiz for a cybersecurity student
+learning the following OSINT tool.
+
+TOOL INFORMATION:
+${JSON.stringify(toolKnowledge, null, 2)}
+
+QUIZ SETTINGS:
+Difficulty: ${difficulty}
+Number of questions: ${count}
+
+REQUIREMENTS:
+
+1. Generate exactly ${count} questions.
+2. Questions must test understanding of the actual tool.
+3. Use ONLY the information provided about the tool.
+4. Do not invent tool features, commands, options, or capabilities.
+5. Each question must have exactly 4 options.
+6. There must be exactly one correct answer.
+7. The correctAnswerIndex must be 0, 1, 2, or 3.
+8. Provide a clear explanation for the correct answer.
+9. Match the requested difficulty.
+10. Questions should be useful for learning OSINT.
+11. Avoid ambiguous questions.
+12. Do not reveal the correct answer outside correctAnswerIndex.
+13. Do not generate questions about tools that are not the selected tool.
+
+Return ONLY valid JSON.
+
+Use exactly this structure:
+
+{
+  "tool": "exact tool name",
+  "difficulty": "${difficulty}",
+  "questions": [
+    {
+      "question": "question text",
+      "options": [
+        "option 1",
+        "option 2",
+        "option 3",
+        "option 4"
+      ],
+      "correctAnswerIndex": 0,
+      "explanation": "short explanation"
+    }
+  ]
+}
+
+IMPORTANT:
+- The tool name must exactly match the selected ForenX tool.
+- Generate exactly ${count} questions.
+- Each question must contain exactly 4 options.
+- Return JSON only.
+`;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ask ForenX AI
+    |--------------------------------------------------------------------------
+    */
+
+    const result = await askOllama(prompt, null, {
+        lightweight: true,
+        numPredict: 700,
+        temperature: 0.2,
+        timeout: 120000,
+        format: "json",
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Handle AI error
+    |--------------------------------------------------------------------------
+    */
+
+    if (!result.success) {
+        return res.status(503).json({
+            success: false,
+            message: result.message,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parse AI response
+    |--------------------------------------------------------------------------
+    */
+
+    let quiz;
+
+    try {
+        quiz = JSON.parse(result.response);
+    }
+    catch (error) {
+        return res.status(502).json({
+            success: false,
+            message: "AI returned invalid quiz JSON.",
+            rawResponse: result.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate quiz
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !quiz ||
+        !Array.isArray(quiz.questions) ||
+        quiz.questions.length !== count
+    ) {
+        return res.status(502).json({
+            success: false,
+            message: "AI returned an invalid quiz format.",
+            rawResponse: result.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate every question
+    |--------------------------------------------------------------------------
+    */
+
+    for (const question of quiz.questions) {
+
+        if (
+            !question ||
+            typeof question.question !== "string" ||
+            !Array.isArray(question.options) ||
+            question.options.length !== 4 ||
+            !Number.isInteger(question.correctAnswerIndex) ||
+            question.correctAnswerIndex < 0 ||
+            question.correctAnswerIndex > 3 ||
+            typeof question.explanation !== "string"
+        ) {
+            return res.status(502).json({
+                success: false,
+                message: "AI generated an invalid quiz question.",
+                rawResponse: result.response,
+            });
+        }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return generated quiz
+    |--------------------------------------------------------------------------
+    */
+
+    res.json({
+        success: true,
+
+        quiz: {
+            tool: toolData.name,
+            toolId: toolData._id,
+            difficulty,
+            questions: quiz.questions,
+        },
+
+        model: result.model,
+        createdAt: result.createdAt,
+    });
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| AI Quiz Evaluation
+|--------------------------------------------------------------------------
+| Phase 2 - Feature 16
+|--------------------------------------------------------------------------
+*/
+
+const evaluateAIQuiz = asyncHandler(async (req, res) => {
+
+    const {
+        tool,
+        difficulty = "Beginner",
+        questions,
+        answers,
+    } = req.body || {};
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate input
+    |--------------------------------------------------------------------------
+    */
+
+    if (!tool || typeof tool !== "string") {
+        return res.status(400).json({
+            success: false,
+            message: "Tool name is required.",
+        });
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Quiz questions are required.",
+        });
+    }
+
+    if (!Array.isArray(answers)) {
+        return res.status(400).json({
+            success: false,
+            message: "Quiz answers are required.",
+        });
+    }
+
+    if (answers.length !== questions.length) {
+        return res.status(400).json({
+            success: false,
+            message: "Number of answers must match number of questions.",
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Find actual tool
+    |--------------------------------------------------------------------------
+    */
+
+    const toolData = await Tool.findOne({
+        name: {
+            $regex: `^${tool.trim()}$`,
+            $options: "i",
+        },
+    })
+        .select("name category shortDescription difficulty")
+        .lean();
+
+
+    if (!toolData) {
+        return res.status(404).json({
+            success: false,
+            message: `Tool "${tool}" was not found in ForenX.`,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Evaluate answers
+    |--------------------------------------------------------------------------
+    */
+
+    let score = 0;
+
+    const results = questions.map((question, index) => {
+
+        const selectedAnswer = answers[index];
+
+        const correctAnswerIndex =
+            Number(question.correctAnswerIndex);
+
+        const selectedAnswerIndex =
+            Number(selectedAnswer);
+
+        const isCorrect =
+            Number.isInteger(selectedAnswerIndex) &&
+            selectedAnswerIndex === correctAnswerIndex;
+
+        if (isCorrect) {
+            score++;
+        }
+
+        return {
+            questionNumber: index + 1,
+            question: question.question,
+            selectedAnswerIndex:
+                Number.isInteger(selectedAnswerIndex)
+                    ? selectedAnswerIndex
+                    : null,
+            correctAnswerIndex,
+            isCorrect,
+            explanation: question.explanation || "",
+        };
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate percentage
+    |--------------------------------------------------------------------------
+    */
+
+    const totalQuestions = questions.length;
+
+    const percentage = Math.round(
+        (score / totalQuestions) * 100
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Determine performance level
+    |--------------------------------------------------------------------------
+    */
+
+    let performance = "Needs Improvement";
+
+    if (percentage >= 90) {
+        performance = "Excellent";
+    }
+    else if (percentage >= 75) {
+        performance = "Good";
+    }
+    else if (percentage >= 50) {
+        performance = "Needs Practice";
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare AI feedback data
+    |--------------------------------------------------------------------------
+    */
+
+    const feedbackData = results.map((result) => ({
+        questionNumber: result.questionNumber,
+        question: result.question,
+        isCorrect: result.isCorrect,
+        selectedAnswerIndex: result.selectedAnswerIndex,
+        correctAnswerIndex: result.correctAnswerIndex,
+        explanation: result.explanation,
+    }));
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI Feedback Prompt
+    |--------------------------------------------------------------------------
+    */
+
+    const prompt = `
+You are ForenX AI, an OSINT learning assistant.
+
+Evaluate a student's performance in a ${difficulty}-level quiz
+about the OSINT tool "${toolData.name}".
+
+QUIZ PERFORMANCE:
+
+Score: ${score}/${totalQuestions}
+Percentage: ${percentage}%
+Performance: ${performance}
+
+QUESTION RESULTS:
+${JSON.stringify(feedbackData, null, 2)}
+
+TASK:
+
+Provide concise personalized learning feedback.
+
+You must:
+1. Summarize the student's performance.
+2. Identify what the student understood well.
+3. Identify concepts that need more practice.
+4. Give practical learning advice.
+5. Suggest one immediate next learning action.
+6. Base your feedback ONLY on the supplied quiz results.
+7. Do not claim that the student used a tool.
+8. Do not invent additional quiz questions or facts.
+
+Return ONLY valid JSON.
+
+Use exactly this structure:
+
+{
+  "summary": "short performance summary",
+  "strengths": [
+    "strength 1"
+  ],
+  "areasToImprove": [
+    "area 1"
+  ],
+  "learningAdvice": [
+    "advice 1"
+  ],
+  "nextAction": "one immediate learning action"
+}
+
+Return JSON only.
+`;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ask ForenX AI
+    |--------------------------------------------------------------------------
+    */
+
+    const aiResult = await askOllama(prompt, null, {
+        lightweight: true,
+        numPredict: 300,
+        temperature: 0.1,
+        timeout: 120000,
+        format: "json",
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Handle AI failure
+    |--------------------------------------------------------------------------
+    */
+
+    if (!aiResult.success) {
+        return res.status(503).json({
+            success: false,
+            message: aiResult.message,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parse AI feedback
+    |--------------------------------------------------------------------------
+    */
+
+    let feedback;
+
+    try {
+        feedback = JSON.parse(aiResult.response);
+    }
+    catch (error) {
+        return res.status(502).json({
+            success: false,
+            message: "AI returned invalid quiz feedback JSON.",
+            rawResponse: aiResult.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate AI feedback
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !feedback ||
+        typeof feedback.summary !== "string" ||
+        !Array.isArray(feedback.strengths) ||
+        !Array.isArray(feedback.areasToImprove) ||
+        !Array.isArray(feedback.learningAdvice) ||
+        typeof feedback.nextAction !== "string"
+    ) {
+        return res.status(502).json({
+            success: false,
+            message: "AI returned an invalid quiz feedback format.",
+            rawResponse: aiResult.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return evaluation
+    |--------------------------------------------------------------------------
+    */
+
+    res.json({
+        success: true,
+
+        evaluation: {
+            tool: toolData.name,
+            difficulty,
+            score,
+            totalQuestions,
+            percentage,
+            performance,
+            results,
+            feedback,
+        },
+
+        model: aiResult.model,
+        createdAt: aiResult.createdAt,
+    });
+});
+
 /*
 |--------------------------------------------------------------------------
 | Export
@@ -1206,4 +1811,6 @@ module.exports = {
     recommendTools,
     suggestCommand,
     personalizedLearningRecommendations,
+    generateAIQuiz,
+    evaluateAIQuiz,
 };
