@@ -9,6 +9,7 @@ const {
     personalizedLearningRecommendations,
     generateAIQuiz,
     evaluateAIQuiz,
+    evaluateAILab,
 } = require("../controllers/aiController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -87,6 +88,19 @@ router.post(
     "/evaluate-quiz",
     protect,
     evaluateAIQuiz
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| AI Practice Lab Evaluation
+|--------------------------------------------------------------------------
+*/
+
+router.post(
+    "/evaluate-lab",
+    protect,
+    evaluateAILab
 );
 
 module.exports = router;

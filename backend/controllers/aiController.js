@@ -2,7 +2,8 @@ const asyncHandler = require("express-async-handler");
 
 const { askOllama } = require("../services/ai/ollamaService");
 const Tool = require("../models/Tool");
-
+const Lab = require("../models/Lab");
+const LabProgress = require("../models/LabProgress");
 
 /*
 |--------------------------------------------------------------------------
@@ -1802,6 +1803,389 @@ Return JSON only.
 
 /*
 |--------------------------------------------------------------------------
+| AI Practice Lab Evaluation
+|--------------------------------------------------------------------------
+| Phase 2 - Feature 17
+|--------------------------------------------------------------------------
+*/
+
+const evaluateAILab = asyncHandler(async (req, res) => {
+
+    const {
+        labId,
+        objectiveResults,
+    } = req.body || {};
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate input
+    |--------------------------------------------------------------------------
+    */
+
+    if (!labId) {
+        return res.status(400).json({
+            success: false,
+            message: "Lab ID is required.",
+        });
+    }
+
+    if (
+        !Array.isArray(objectiveResults) ||
+        objectiveResults.length === 0
+    ) {
+        return res.status(400).json({
+            success: false,
+            message: "Objective results are required.",
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get lab
+    |--------------------------------------------------------------------------
+    */
+
+    const lab = await Lab.findOne({
+        _id: labId,
+        isActive: true,
+    })
+        .select(
+            "title description tool category difficulty target missionBrief requiredCommand objectives hints xpReward"
+        )
+        .lean();
+
+
+    if (!lab) {
+        return res.status(404).json({
+            success: false,
+            message: "Lab not found.",
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get student's lab progress
+    |--------------------------------------------------------------------------
+    */
+
+    const progress = await LabProgress.findOne({
+        user: req.user._id,
+        lab: lab._id,
+    }).lean();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare lab information
+    |--------------------------------------------------------------------------
+    */
+
+    const labInformation = {
+        title: lab.title,
+        description: lab.description || "",
+        tool: lab.tool,
+        category: lab.category || "OSINT",
+        difficulty: lab.difficulty,
+        target: lab.target,
+        missionBrief: lab.missionBrief,
+        requiredCommand: lab.requiredCommand,
+        objectives: lab.objectives.map(
+            (objective, index) => ({
+                objectiveIndex: index,
+                question: objective.question,
+                type: objective.type,
+                expectedField: objective.expectedField,
+            })
+        ),
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Prepare student progress
+    |--------------------------------------------------------------------------
+    */
+
+    const studentProgress = {
+        completed: progress?.completed || false,
+
+        objectives:
+            progress?.objectives || [],
+
+        xpAwarded:
+            progress?.xpAwarded || false,
+
+        startedAt:
+            progress?.startedAt || null,
+
+        completedAt:
+            progress?.completedAt || null,
+    };
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate basic performance
+    |--------------------------------------------------------------------------
+    */
+
+    const totalObjectives =
+        objectiveResults.length;
+
+    const completedObjectives =
+        objectiveResults.filter(
+            item => item && item.correct === true
+        ).length;
+
+    const percentage =
+        Math.round(
+            (completedObjectives / totalObjectives) * 100
+        );
+
+
+    let performance = "Needs Improvement";
+
+    if (percentage >= 90) {
+        performance = "Excellent";
+    }
+    else if (percentage >= 75) {
+        performance = "Good";
+    }
+    else if (percentage >= 50) {
+        performance = "Needs Practice";
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI Prompt
+    |--------------------------------------------------------------------------
+    */
+
+    const prompt = `
+You are ForenX AI, an OSINT practice-lab mentor.
+
+Evaluate the student's performance in the following OSINT practice lab.
+
+LAB INFORMATION:
+${JSON.stringify(labInformation, null, 2)}
+
+STUDENT LAB PROGRESS:
+${JSON.stringify(studentProgress, null, 2)}
+
+OBJECTIVE RESULTS:
+${JSON.stringify(objectiveResults, null, 2)}
+
+PERFORMANCE:
+Completed objectives: ${completedObjectives}/${totalObjectives}
+Percentage: ${percentage}%
+Performance: ${performance}
+
+TASK:
+
+Provide personalized educational feedback about the student's lab attempt.
+
+You must:
+1. Explain the student's overall performance.
+2. Identify objectives completed correctly.
+3. Identify objectives that need improvement.
+4. Explain mistakes in beginner-friendly language.
+5. Give practical OSINT learning advice.
+6. Recommend what the student should investigate or practice next.
+7. Consider the lab difficulty.
+8. Base your feedback ONLY on the supplied lab information and results.
+9. Do not invent command output.
+10. Do not claim that a command was executed unless the supplied results explicitly show it.
+11. Do not change the correctness of the supplied objective results.
+12. Do not reveal hidden information that is not present in the supplied data.
+
+Return ONLY valid JSON.
+
+Use exactly this structure:
+
+{
+  "summary": "short overall performance summary",
+  "strengths": [
+    "strength 1"
+  ],
+  "areasToImprove": [
+    "area 1"
+  ],
+  "objectiveFeedback": [
+    {
+      "objectiveIndex": 0,
+      "status": "Correct/Needs Improvement",
+      "feedback": "short explanation"
+    }
+  ],
+  "learningAdvice": [
+    "advice 1"
+  ],
+  "nextAction": "one immediate action"
+}
+
+IMPORTANT:
+- objectiveIndex must match the supplied objective index.
+- Do not invent objective indexes.
+- If there are no weaknesses, return an empty array for areasToImprove.
+- Return JSON only.
+`;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ask ForenX AI
+    |--------------------------------------------------------------------------
+    */
+
+    const aiResult = await askOllama(
+        prompt,
+        null,
+        {
+            lightweight: true,
+            numPredict: 500,
+            temperature: 0.1,
+            timeout: 120000,
+            format: "json",
+        }
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Handle AI failure
+    |--------------------------------------------------------------------------
+    */
+
+    if (!aiResult.success) {
+        return res.status(503).json({
+            success: false,
+            message: aiResult.message,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parse AI response
+    |--------------------------------------------------------------------------
+    */
+
+    let feedback;
+
+    try {
+        feedback = JSON.parse(
+            aiResult.response
+        );
+    }
+    catch (error) {
+        return res.status(502).json({
+            success: false,
+            message:
+                "AI returned invalid practice-lab feedback JSON.",
+            rawResponse:
+                aiResult.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate AI feedback
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        !feedback ||
+        typeof feedback.summary !== "string" ||
+        !Array.isArray(feedback.strengths) ||
+        !Array.isArray(feedback.areasToImprove) ||
+        !Array.isArray(feedback.objectiveFeedback) ||
+        !Array.isArray(feedback.learningAdvice) ||
+        typeof feedback.nextAction !== "string"
+    ) {
+        return res.status(502).json({
+            success: false,
+            message:
+                "AI returned an invalid practice-lab feedback format.",
+            rawResponse:
+                aiResult.response,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validate objective indexes
+    |--------------------------------------------------------------------------
+    */
+
+    const validObjectiveIndexes =
+        new Set(
+            objectiveResults.map(
+                item => Number(item.objectiveIndex)
+            )
+        );
+
+
+    const invalidFeedback =
+        feedback.objectiveFeedback.filter(
+            item =>
+                !item ||
+                !validObjectiveIndexes.has(
+                    Number(item.objectiveIndex)
+                )
+        );
+
+
+    if (invalidFeedback.length > 0) {
+        return res.status(502).json({
+            success: false,
+            message:
+                "AI returned feedback for an invalid objective.",
+            invalidFeedback,
+        });
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Return AI evaluation
+    |--------------------------------------------------------------------------
+    */
+
+    res.json({
+        success: true,
+
+        evaluation: {
+            lab: {
+                id: lab._id,
+                title: lab.title,
+                tool: lab.tool,
+                difficulty: lab.difficulty,
+            },
+
+            performance: {
+                completedObjectives,
+                totalObjectives,
+                percentage,
+                level: performance,
+            },
+
+            feedback,
+        },
+
+        model: aiResult.model,
+
+        createdAt: aiResult.createdAt,
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
 | Export
 |--------------------------------------------------------------------------
 */
@@ -1813,4 +2197,5 @@ module.exports = {
     personalizedLearningRecommendations,
     generateAIQuiz,
     evaluateAIQuiz,
+    evaluateAILab,
 };
