@@ -8,6 +8,7 @@ const cookieParser = require("cookie-parser");
 const dns = require("dns");
 const toolRoutes = require("./routes/toolRoutes");
 const lessonRoutes = require("./routes/lessonRoutes");
+const userRoutes = require("./routes/userRoutes");
 const connectDB = require("./config/db");
 const quizRoutes = require("./routes/quizRoutes");
 const lessonProgressRoutes = require("./routes/lessonProgressRoutes");
@@ -48,6 +49,7 @@ app.use("/api/quizzes", quizRoutes);
 app.use("/api/lesson-progress", lessonProgressRoutes);
 app.use("/api/metadata", metadataRoutes);
 app.use("/api/labs", labRoutes);
+app.use("/api/user", userRoutes);
 // Root Route
 app.get("/", (req, res) => {
     res.json({

@@ -44,6 +44,25 @@ export const OsintService = {
 
     }
   },
+
+  async getMyProfile() {
+    const token =
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Please login to load your profile.");
+    }
+
+    const response = await apiClient.get("/user/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  },
+
   async getLessons(toolId: string) {
     const response = await apiClient.get(`/lessons/tool/${toolId}`);
     return response.data.data;

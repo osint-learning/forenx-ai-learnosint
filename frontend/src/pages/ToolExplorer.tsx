@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { TOOL_CATEGORIES } from '../constants';
 import type { ToolCategory } from '../types';
@@ -11,6 +11,8 @@ import { Badge } from '../components/ui/Badge';
 import {
   Compass,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export const ToolExplorer: React.FC = () => {
@@ -26,35 +28,95 @@ export const ToolExplorer: React.FC = () => {
   const [inspectedTool, setInspectedTool] =
     useState<any | null>(null);
 
-  /*
-   * ============================================================
-   * CATEGORY SELECTION
-   * ============================================================
-   */
+  // ============================================================
+  // PAGINATION
+  // ============================================================
+
+  const TOOLS_PER_PAGE = 10;
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // ============================================================
+  // FILTER TOOLS BY CATEGORY
+  // ============================================================
+
+  const filteredTools =
+    selectedPlanet === 'All'
+      ? tools
+      : tools.filter(
+          (tool: any) =>
+            tool.category === selectedPlanet
+        );
+
+  // Total pages
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredTools.length / TOOLS_PER_PAGE
+    )
+  );
+
+  // Get tools for current page
+  const startIndex =
+    (currentPage - 1) * TOOLS_PER_PAGE;
+
+  const endIndex =
+    startIndex + TOOLS_PER_PAGE;
+
+  const paginatedTools =
+    filteredTools.slice(
+      startIndex,
+      endIndex
+    );
+
+  // ============================================================
+  // RESET PAGE WHEN CATEGORY CHANGES
+  // ============================================================
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPlanet]);
+
+  // ============================================================
+  // CATEGORY SELECTION
+  // ============================================================
 
   const handlePlanetClick = (
     category: ToolCategory | 'All'
   ) => {
     setSelectedPlanet(category);
     setActiveCategory(category);
+    setCurrentPage(1);
   };
 
-  /*
-   * ============================================================
-   * OPEN ORIGINAL TOOL DETAIL DRAWER
-   * ============================================================
-   */
+  // ============================================================
+  // PAGINATION CONTROLS
+  // ============================================================
+
+  const handlePreviousPage = () => {
+    setCurrentPage((page) =>
+      Math.max(1, page - 1)
+    );
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((page) =>
+      Math.min(totalPages, page + 1)
+    );
+  };
+
+  // ============================================================
+  // OPEN TOOL DETAIL DRAWER
+  // ============================================================
 
   const handleToolSelect = (tool: any) => {
     setSelectedTool(tool);
     setInspectedTool(tool);
   };
 
-  /*
-   * ============================================================
-   * CLOSE TOOL DETAIL DRAWER
-   * ============================================================
-   */
+  // ============================================================
+  // CLOSE TOOL DETAIL DRAWER
+  // ============================================================
 
   const closeToolDrawer = () => {
     setInspectedTool(null);
@@ -294,8 +356,8 @@ export const ToolExplorer: React.FC = () => {
 
 
         <ToolOrbitSystem
-          tools={tools}
-          categoryFilter={selectedPlanet}
+          tools={paginatedTools}
+          categoryFilter="All"
           onToolSelect={handleToolSelect}
         />
 
@@ -303,15 +365,145 @@ export const ToolExplorer: React.FC = () => {
 
 
       {/* ======================================================
+          PAGINATION
+      ======================================================= */}
+
+      {filteredTools.length > TOOLS_PER_PAGE && (
+
+        <div
+          className="
+            flex
+            flex-col
+            sm:flex-row
+            items-center
+            justify-center
+            gap-4
+            font-mono
+          "
+        >
+
+          {/* PREVIOUS */}
+
+          <button
+            type="button"
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+            className={`
+              flex
+              items-center
+              gap-2
+              px-5
+              py-2.5
+              rounded-xl
+              border
+              text-xs
+              font-bold
+              transition-all
+              ${
+                currentPage === 1
+                  ? 'border-white/5 text-slate-600 cursor-not-allowed'
+                  : 'border-[#00ff99]/30 text-[#00ff99] bg-[#00ff99]/5 hover:bg-[#00ff99]/15 hover:border-[#00ff99]'
+              }
+            `}
+          >
+            <ChevronLeft size={15} />
+
+            PREVIOUS
+
+          </button>
+
+
+          {/* PAGE INFORMATION */}
+
+          <div
+            className="
+              px-5
+              py-2.5
+              rounded-xl
+              border
+              border-[#00ff99]/20
+              bg-black/50
+              text-[#00ff99]
+              text-xs
+              font-bold
+              min-w-[150px]
+              text-center
+            "
+          >
+
+            PAGE {currentPage} / {totalPages}
+
+          </div>
+
+
+          {/* NEXT */}
+
+          <button
+            type="button"
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className={`
+              flex
+              items-center
+              gap-2
+              px-5
+              py-2.5
+              rounded-xl
+              border
+              text-xs
+              font-bold
+              transition-all
+              ${
+                currentPage === totalPages
+                  ? 'border-white/5 text-slate-600 cursor-not-allowed'
+                  : 'border-[#00ff99]/30 text-[#00ff99] bg-[#00ff99]/5 hover:bg-[#00ff99]/15 hover:border-[#00ff99]'
+              }
+            `}
+          >
+
+            NEXT
+
+            <ChevronRight size={15} />
+
+          </button>
+
+        </div>
+
+      )}
+
+
+      {/* ======================================================
+          TOOL COUNT
+      ======================================================= */}
+
+      <div
+        className="
+          flex
+          justify-center
+          font-mono
+          text-[10px]
+          text-slate-500
+          uppercase
+          tracking-wider
+        "
+      >
+
+        SHOWING{' '}
+        {filteredTools.length === 0
+          ? 0
+          : startIndex + 1}
+        –
+        {Math.min(
+          endIndex,
+          filteredTools.length
+        )}{' '}
+        OF {filteredTools.length} TOOLS
+
+      </div>
+
+
+      {/* ======================================================
           ORIGINAL TOOL DETAIL DRAWER
-          
-          This restores:
-          - Overview & Install
-          - Commands
-          - Lessons Included
-          - Knowledge Check / Quiz
-          - Lesson Viewer
-          - Practice Lab
       ======================================================= */}
 
       {inspectedTool && (
