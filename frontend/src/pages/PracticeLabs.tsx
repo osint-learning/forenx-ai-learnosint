@@ -135,7 +135,7 @@ export const PracticeLabs: React.FC = () => {
   // --------------------------------------------------
 
   const handleCommandExecution = (
-    cmd: string,
+    _cmd: string,
     response?: any
   ) => {
     if (!activeLab) return;

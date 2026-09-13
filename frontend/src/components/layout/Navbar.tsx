@@ -1,3 +1,4 @@
+import { useAuth } from '../../context/AuthContext';
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
@@ -10,10 +11,12 @@ import {
   Bot,
   Zap,
   User,
-  LayoutDashboard
+  LayoutDashboard,
+  ShieldAlert
 } from "lucide-react";
 
 export const Navbar: React.FC = () => {
+  const { user } = useAuth();
 
   const {
     userProfile,
@@ -109,6 +112,20 @@ export const Navbar: React.FC = () => {
 
         <div className="flex items-center gap-3 ml-auto">
 
+
+          {/* ==================================================
+              ADMIN CONTROL (ADMINS ONLY)
+          ================================================== */}
+          {user?.role === 'admin' && (
+            <GlowButton
+              variant="primary"
+              icon={<ShieldAlert size={16} />}
+              onClick={() => navigate('/admin')}
+              className="!px-3 !py-1.5 !bg-[#00ff99] !text-black font-bold hover:shadow-[0_0_15px_rgba(0,255,153,0.5)]"
+            >
+              <span className="hidden sm:inline">Admin</span>
+            </GlowButton>
+          )}
 
           {/* ==================================================
               PROFILE

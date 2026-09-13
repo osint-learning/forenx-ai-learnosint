@@ -383,20 +383,142 @@ export interface IntelligenceReport {
 
 export interface UserProfile {
   username: string;
-
   email: string;
-
   role: string;
-
   level: number;
-
   currentXp: number;
-
   completedLabsCount: number;
-
   completedLessonsCount: number;
-
   badges: string[];
-
   createdAt: string;
+  nextLevelXp: number;
+  streakDays: number;
+  rankPosition: number;
+  codename: string;
+  accuracyRate: number;
+}
+
+// ============================================================
+// ADMIN CONTROL TYPES
+// ============================================================
+
+export interface AdminStudent {
+  _id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  xp: number;
+  level: number;
+  isVerified: boolean;
+  createdAt: string;
+  completedLessons?: Array<{ _id: string; title: string; lessonNumber?: number }>;
+  completedLabs?: Array<{ _id: string; title: string; difficulty?: string }>;
+  badges?: string[];
+}
+
+export interface AdminOverview {
+  users: {
+    total: number;
+    students: number;
+    admins: number;
+    verifiedStudents: number;
+  };
+  learning: {
+    tools: number;
+    lessons: number;
+    quizzes: number;
+    labs: number;
+  };
+  recentStudents: AdminStudent[];
+}
+
+export interface AdminAnalytics {
+  students: {
+    total: number;
+    verified: number;
+    unverified: number;
+    totalXp: number;
+    avgXp: number;
+    levelDistribution: {
+      level1: number;
+      level2: number;
+      level3: number;
+      level4: number;
+      level5Plus: number;
+    };
+    topStudents: Array<{
+      _id: string;
+      fullName: string;
+      email: string;
+      xp: number;
+      level: number;
+      isVerified: boolean;
+    }>;
+  };
+  content: {
+    totalTools: number;
+    totalLessons: number;
+    totalQuizzes: number;
+    totalLabs: number;
+    toolsByCategory: Record<string, number>;
+    contentByDifficulty: {
+      beginner: number;
+      intermediate: number;
+      advanced: number;
+    };
+  };
+  engagement: {
+    totalLessonsCompleted: number;
+    totalLabsCompleted: number;
+  };
+}
+
+export interface AdminLesson {
+  _id: string;
+  tool: any;
+  lessonNumber: number;
+  title: string;
+  shortDescription?: string;
+  content: string;
+  keyPoints?: string[];
+  example?: string;
+  estimatedTime?: number;
+  difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
+  isPublished?: boolean;
+  createdAt?: string;
+}
+
+export interface AdminQuiz {
+  _id: string;
+  tool: any;
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation?: string;
+  difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
+  order?: number;
+  createdAt?: string;
+}
+
+export interface AdminLab {
+  _id: string;
+  title: string;
+  description?: string;
+  tool: string;
+  category?: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  target: string;
+  missionBrief: string;
+  requiredCommand: string;
+  objectives?: Array<{
+    question: string;
+    type: 'command' | 'answer';
+    expectedField: string;
+    answer?: string;
+    completed?: boolean;
+  }>;
+  hints?: string[];
+  xpReward: number;
+  isActive: boolean;
+  createdAt?: string;
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Bot, X, Send, Sparkles, Terminal, HelpCircle } from 'lucide-react';
+import { Bot, X, Send } from 'lucide-react';
 import { GlowButton } from '../ui/GlowButton';
 
 export const AiMentorDrawer: React.FC = () => {

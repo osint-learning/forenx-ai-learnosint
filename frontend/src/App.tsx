@@ -8,7 +8,7 @@ import { AppRouter } from "./router";
 
 function AppLayout() {
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const isAuthPage =
     location.pathname === "/login" ||
     location.pathname === "/register";

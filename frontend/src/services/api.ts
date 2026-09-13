@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport } from '../types';
+import type {  OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport , AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab } from '../types';
 import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
 const API_BASE_URL =
@@ -17,6 +17,179 @@ export const apiClient = axios.create({
 
 // REST API Service Wrappers with local fallback for immediate interactive UI operation
 export const OsintService = {
+
+  // ---------- ADMIN DASHBOARD & MANAGEMENT ----------
+  getAdminOverview: async (): Promise<AdminOverview> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.get("/admin/overview", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  getAdminAnalytics: async (): Promise<AdminAnalytics> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.get("/admin/analytics", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  getStudents: async (): Promise<AdminStudent[]> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.get("/admin/students", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  getStudent: async (id: string): Promise<AdminStudent> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.get("/admin/students/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  updateStudent: async (id: string, data: Partial<AdminStudent>): Promise<AdminStudent> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.put("/admin/students/" + id, data, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  deleteStudent: async (id: string): Promise<void> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    await apiClient.delete("/admin/students/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+  },
+
+  // Tool Admin CRUD
+  createTool: async (toolData: any): Promise<any> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.post("/tools", toolData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  updateTool: async (id: string, toolData: any): Promise<any> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.put("/tools/" + id, toolData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  deleteTool: async (id: string): Promise<void> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    await apiClient.delete("/tools/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+  },
+
+  // Lesson Admin CRUD
+  getAllLessonsAdmin: async (): Promise<AdminLesson[]> => {
+    const response = await apiClient.get("/lessons");
+    return response.data.data || [];
+  },
+
+  getLessonsByTool: async (toolId: string): Promise<AdminLesson[]> => {
+    const response = await apiClient.get("/lessons/tool/" + toolId);
+    return response.data.data || [];
+  },
+
+  createLesson: async (lessonData: any): Promise<AdminLesson> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.post("/lessons", lessonData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  updateLesson: async (id: string, lessonData: any): Promise<AdminLesson> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.put("/lessons/" + id, lessonData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  deleteLesson: async (id: string): Promise<void> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    await apiClient.delete("/lessons/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+  },
+
+  // Quiz Admin CRUD
+  getAllQuizzesAdmin: async (): Promise<AdminQuiz[]> => {
+    const response = await apiClient.get("/quizzes");
+    return response.data.data || [];
+  },
+
+  getQuizzesByTool: async (toolId: string): Promise<AdminQuiz[]> => {
+    const response = await apiClient.get("/quizzes/tool/" + toolId);
+    return response.data.data || [];
+  },
+
+  createQuiz: async (quizData: any): Promise<AdminQuiz> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.post("/quizzes", quizData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  updateQuiz: async (id: string, quizData: any): Promise<AdminQuiz> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.put("/quizzes/" + id, quizData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  deleteQuiz: async (id: string): Promise<void> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    await apiClient.delete("/quizzes/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+  },
+
+  // Lab Admin CRUD
+  getAdminLabs: async (): Promise<AdminLab[]> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.get("/labs", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data || [];
+  },
+
+  createLab: async (labData: any): Promise<AdminLab> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.post("/labs", labData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  updateLab: async (id: string, labData: any): Promise<AdminLab> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const response = await apiClient.put("/labs/" + id, labData, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.data;
+  },
+
+  deleteLab: async (id: string): Promise<void> => {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    await apiClient.delete("/labs/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+  },
+
   async getTools(): Promise<OsintTool[]> {
     try {
       const response = await apiClient.get("/tools");

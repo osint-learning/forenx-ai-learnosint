@@ -14,7 +14,7 @@ import { ThreatIntelligence } from "../pages/ThreatIntelligence";
 import { Reports } from "../pages/Reports";
 import { Profile } from "../pages/Profile";
 import { IndependentTerminal } from "../pages/IndependentTerminal";
-
+import { AdminDashboard } from "../pages/AdminDashboard";
 import { Login } from "../pages/Login";
 import { Register } from "../pages/Register";
 
@@ -131,6 +131,15 @@ export const AppRouter: React.FC = () => {
         }
       />
 
+      {/* Admin Dashboard */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
 
 
       {/* Unknown Route */}

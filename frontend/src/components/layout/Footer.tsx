@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Activity, Lock, Cpu, Globe } from 'lucide-react';
+import { Shield, Activity, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (

@@ -109,6 +109,11 @@ export const AppProvider: React.FC<{
       completedLessonsCount: 0,
       badges: [],
       createdAt: '',
+      nextLevelXp: 1000,
+      streakDays: 1,
+      rankPosition: 1,
+      codename: 'OPERATOR_01',
+      accuracyRate: 100
     });
 
 
@@ -275,8 +280,12 @@ export const AppProvider: React.FC<{
               ? user.badges
               : [],
 
-          createdAt:
-            user.createdAt || '',
+          createdAt: user.createdAt || '',
+          nextLevelXp: (user.level || 1) * 1000,
+          streakDays: 3,
+          rankPosition: 1,
+          codename: (user.fullName || 'AGENT').toUpperCase().replace(/\s+/g, '_'),
+          accuracyRate: 98
         };
 
 

@@ -2,18 +2,10 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { IntelligenceCore } from '../components/intelligence/IntelligenceCore';
 import { OrbitSystem } from '../components/intelligence/OrbitSystem';
-import { GlassCard } from '../components/ui/GlassCard';
-import { GlowButton } from '../components/ui/GlowButton';
-import { ProgressRing } from '../components/ui/ProgressRing';
-import { Badge } from '../components/ui/Badge';
-import { Shield, Zap, Terminal, Eye, Activity, ChevronRight, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
-  const { userProfile, tools, setSelectedTool } = useApp();
-  const navigate = useNavigate();
-
-  const xpProgressPercent = Math.min(100, Math.round((userProfile.currentXp / userProfile.nextLevelXp) * 100));
+  const { tools } = useApp();
 
   return (
     <div className="space-y-12">
@@ -41,8 +33,8 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </section>
-
-
     </div>
   );
 };
+
+export default Dashboard;

@@ -17,7 +17,7 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({ tool, onClos
   const navigate = useNavigate();
   const [copiedCmdIndex, setCopiedCmdIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'commands' | 'quiz'>('info');
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});  const [showQuizResult, setShowQuizResult] = useState<boolean>(false);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});  
   const [lessons, setLessons] = useState<any[]>([]);
   const [quiz, setQuiz] = useState<any[]>([]);
   const [originalQuiz, setOriginalQuiz] = useState<any[]>([]);
@@ -30,7 +30,6 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({ tool, onClos
     setSelectedAnswers({});
     setSubmitted(false);
     setScore(0);
-    setShowQuizResult(false);
     setActiveTab('info');
 
     const loadData = async () => {
