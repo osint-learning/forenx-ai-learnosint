@@ -666,6 +666,122 @@ const resetLabProgress = asyncHandler(async (req, res) => {
     });
 });
 // ======================================================
+// CREATE LAB (ADMIN)
+// ======================================================
+
+const createLab = asyncHandler(async (req, res) => {
+    const {
+        title,
+        description,
+        tool,
+        category,
+        difficulty,
+        target,
+        missionBrief,
+        requiredCommand,
+        objectives,
+        hints,
+        xpReward,
+        isActive,
+    } = req.body;
+
+    if (!title || !tool || !target || !missionBrief || !requiredCommand) {
+        return res.status(400).json({
+            success: false,
+            message: "Please provide required fields: title, tool, target, missionBrief, requiredCommand",
+        });
+    }
+
+    const lab = await Lab.create({
+        title,
+        description: description || "",
+        tool,
+        category: category || "OSINT",
+        difficulty: difficulty || "Easy",
+        target,
+        missionBrief,
+        requiredCommand,
+        objectives: objectives || [],
+        hints: hints || [],
+        xpReward: xpReward || 100,
+        isActive: isActive !== undefined ? isActive : true,
+    });
+
+    res.status(201).json({
+        success: true,
+        message: "Lab created successfully",
+        data: lab,
+    });
+});
+
+// ======================================================
+// UPDATE LAB (ADMIN)
+// ======================================================
+
+const updateLab = asyncHandler(async (req, res) => {
+    const lab = await Lab.findById(req.params.id);
+
+    if (!lab) {
+        return res.status(404).json({
+            success: false,
+            message: "Lab not found",
+        });
+    }
+
+    const allowedFields = [
+        "title",
+        "description",
+        "tool",
+        "category",
+        "difficulty",
+        "target",
+        "missionBrief",
+        "requiredCommand",
+        "objectives",
+        "hints",
+        "xpReward",
+        "isActive",
+    ];
+
+    allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+            lab[field] = req.body[field];
+        }
+    });
+
+    await lab.save();
+
+    res.json({
+        success: true,
+        message: "Lab updated successfully",
+        data: lab,
+    });
+});
+
+// ======================================================
+// DELETE LAB (ADMIN)
+// ======================================================
+
+const deleteLab = asyncHandler(async (req, res) => {
+    const lab = await Lab.findById(req.params.id);
+
+    if (!lab) {
+        return res.status(404).json({
+            success: false,
+            message: "Lab not found",
+        });
+    }
+
+    await lab.deleteOne();
+    await LabProgress.deleteMany({ lab: req.params.id });
+
+    res.json({
+        success: true,
+        message: "Lab deleted successfully",
+    });
+});
+
+// ======================================================
 // EXPORTS
 // ======================================================
 
@@ -674,4 +790,7 @@ module.exports = {
     getLabById,
     evaluateLabAnswer,
     resetLabProgress,
+    createLab,
+    updateLab,
+    deleteLab,
 };

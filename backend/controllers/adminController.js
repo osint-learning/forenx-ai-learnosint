@@ -1,3 +1,5 @@
+const LessonProgress = require("../models/LessonProgress");
+const LabProgress = require("../models/LabProgress");
 const asyncHandler = require("express-async-handler");
 
 const User = require("../models/User");
@@ -5,25 +7,23 @@ const Tool = require("../models/Tool");
 const Lesson = require("../models/Lesson");
 const Quiz = require("../models/Quiz");
 const Lab = require("../models/Lab");
-const Investigation = require("../models/Investigation");
 
 // ==========================================
 // ADMIN DASHBOARD OVERVIEW
 // ==========================================
 
 const getAdminOverview = asyncHandler(async (req, res) => {
-  const [
-    totalStudents,
-    totalAdmins,
-    totalUsers,
-    totalTools,
-    totalLessons,
-    totalQuizzes,
-    totalLabs,
-    totalInvestigations,
-    verifiedStudents,
-    recentStudents,
-  ] = await Promise.all([
+const [
+  totalStudents,
+  totalAdmins,
+  totalUsers,
+  totalTools,
+  totalLessons,
+  totalQuizzes,
+  totalLabs,
+  verifiedStudents,
+  recentStudents,
+] = await Promise.all([
     User.countDocuments({ role: "student" }),
     User.countDocuments({ role: "admin" }),
     User.countDocuments(),
@@ -32,7 +32,6 @@ const getAdminOverview = asyncHandler(async (req, res) => {
     Lesson.countDocuments(),
     Quiz.countDocuments(),
     Lab.countDocuments(),
-    Investigation.countDocuments(),
 
     User.countDocuments({
       role: "student",
@@ -60,10 +59,6 @@ const getAdminOverview = asyncHandler(async (req, res) => {
         lessons: totalLessons,
         quizzes: totalQuizzes,
         labs: totalLabs,
-      },
-
-      investigations: {
-        total: totalInvestigations,
       },
 
       recentStudents,
@@ -183,8 +178,99 @@ const deleteStudent = asyncHandler(async (req, res) => {
 });
 
 
+
+// ==========================================
+// ADMIN DASHBOARD ANALYTICS
+// ==========================================
+
+const getAdminAnalytics = asyncHandler(async (req, res) => {
+  const [
+    totalStudents,
+    verifiedStudents,
+    students,
+    totalLessonsCompleted,
+    totalLabsCompleted,
+    tools,
+    lessons,
+    quizzes,
+    labs,
+  ] = await Promise.all([
+    User.countDocuments({ role: "student" }),
+    User.countDocuments({ role: "student", isVerified: true }),
+    User.find({ role: "student" }).select("fullName email xp level isVerified createdAt"),
+    LessonProgress.countDocuments({ completed: true }),
+    LabProgress.countDocuments({ completed: true }),
+    Tool.find().select("name category difficulty"),
+    Lesson.find().select("title tool difficulty lessonNumber"),
+    Quiz.find().select("question tool difficulty"),
+    Lab.find().select("title tool difficulty category"),
+  ]);
+
+  const totalXp = students.reduce((sum, s) => sum + (s.xp || 0), 0);
+  const avgXp = totalStudents > 0 ? Math.round(totalXp / totalStudents) : 0;
+  
+  const levelDistribution = {
+    level1: students.filter((s) => (s.level || 1) === 1).length,
+    level2: students.filter((s) => s.level === 2).length,
+    level3: students.filter((s) => s.level === 3).length,
+    level4: students.filter((s) => s.level === 4).length,
+    level5Plus: students.filter((s) => (s.level || 1) >= 5).length,
+  };
+
+  const topStudents = [...students]
+    .sort((a, b) => (b.xp || 0) - (a.xp || 0))
+    .slice(0, 5)
+    .map((s) => ({
+      _id: s._id,
+      fullName: s.fullName,
+      email: s.email,
+      xp: s.xp,
+      level: s.level,
+      isVerified: s.isVerified,
+    }));
+
+  const toolsByCategory = {};
+  tools.forEach((t) => {
+    toolsByCategory[t.category] = (toolsByCategory[t.category] || 0) + 1;
+  });
+
+  const contentByDifficulty = {
+    beginner: lessons.filter((l) => l.difficulty === "Beginner").length + tools.filter((t) => t.difficulty === "Beginner").length,
+    intermediate: lessons.filter((l) => l.difficulty === "Intermediate").length + tools.filter((t) => t.difficulty === "Intermediate").length,
+    advanced: lessons.filter((l) => l.difficulty === "Advanced").length + tools.filter((t) => t.difficulty === "Advanced").length,
+  };
+
+  res.json({
+    success: true,
+    data: {
+      students: {
+        total: totalStudents,
+        verified: verifiedStudents,
+        unverified: totalStudents - verifiedStudents,
+        totalXp,
+        avgXp,
+        levelDistribution,
+        topStudents,
+      },
+      content: {
+        totalTools: tools.length,
+        totalLessons: lessons.length,
+        totalQuizzes: quizzes.length,
+        totalLabs: labs.length,
+        toolsByCategory,
+        contentByDifficulty,
+      },
+      engagement: {
+        totalLessonsCompleted,
+        totalLabsCompleted,
+      },
+    },
+  });
+});
+
 module.exports = {
   getAdminOverview,
+  getAdminAnalytics,
   getAllStudents,
   getStudentById,
   updateStudent,

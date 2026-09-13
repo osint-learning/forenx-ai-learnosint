@@ -1,5 +1,4 @@
 const express = require("express");
-
 const router = express.Router();
 
 const {
@@ -7,45 +6,26 @@ const {
     getLabById,
     evaluateLabAnswer,
     resetLabProgress,
+    createLab,
+    updateLab,
+    deleteLab,
 } = require("../controllers/labController");
 
-const { protect } = require("../middleware/authMiddleware");
-
+const { protect, adminOnly } = require("../middleware/authMiddleware");
 
 // ======================================================
-// GET ALL ACTIVE LABS
+// PUBLIC / STUDENT ROUTES
 // ======================================================
-
 router.get("/", protect, getLabs);
-
-
-// ======================================================
-// GET ONE LAB
-// ======================================================
-
 router.get("/:id", protect, getLabById);
-
-
-// ======================================================
-// EVALUATE OBJECTIVE ANSWER
-// ======================================================
-
-router.post(
-    "/:id/evaluate",
-    protect,
-    evaluateLabAnswer
-);
-
+router.post("/:id/evaluate", protect, evaluateLabAnswer);
+router.post("/:id/reset", protect, resetLabProgress);
 
 // ======================================================
-// RETRY / RESET LAB
+// ADMIN ROUTES
 // ======================================================
-
-router.post(
-    "/:id/reset",
-    protect,
-    resetLabProgress
-);
-
+router.post("/", protect, adminOnly, createLab);
+router.put("/:id", protect, adminOnly, updateLab);
+router.delete("/:id", protect, adminOnly, deleteLab);
 
 module.exports = router;

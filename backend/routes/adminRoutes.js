@@ -2,25 +2,27 @@ const express = require("express");
 
 const {
   getAdminOverview,
+  getAdminAnalytics,
   getAllStudents,
   getStudentById,
   updateStudent,
   deleteStudent,
 } = require("../controllers/adminController");
 
-const authMiddleware = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
-// All admin routes require authentication + admin role
-router.use(authMiddleware);
+// All admin routes require login + admin role
+router.use(protect);
 router.use(adminMiddleware);
 
-// Dashboard
+// Admin Dashboard
 router.get("/overview", getAdminOverview);
+router.get("/analytics", getAdminAnalytics);
 
-// Student management
+// Student Management
 router.get("/students", getAllStudents);
 router.get("/students/:id", getStudentById);
 router.put("/students/:id", updateStudent);
