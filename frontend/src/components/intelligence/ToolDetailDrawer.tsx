@@ -27,6 +27,12 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({ tool, onClos
   useEffect(() => {
     if (!tool) return;
 
+    setSelectedAnswers({});
+    setSubmitted(false);
+    setScore(0);
+    setShowQuizResult(false);
+    setActiveTab('info');
+
     const loadData = async () => {
       try {
         const lessonsData = await OsintService.getLessons(tool.id);
@@ -45,25 +51,29 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({ tool, onClos
     loadData();
   }, [tool]); 
 
-    const shuffleQuiz = (quizData: any[]) => {
-      const shuffledQuestions = [...quizData]
-        .sort(() => Math.random() - 0.5)
-        .map((q) => {
-          const correctOption = q.options[q.correctAnswerIndex];
+  const shuffleQuiz = (quizData: any[]) => {
+    // Select exactly 5 questions
+    const selectedQuestions = [...quizData]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 5);
 
-          const shuffledOptions = [...q.options].sort(
-            () => Math.random() - 0.5
-          );
+    // Shuffle questions + shuffle their options
+    const shuffledQuestions = selectedQuestions.map((q) => {
+      const correctOption = q.options[q.correctAnswerIndex];
 
-          return {
-            ...q,
-            options: shuffledOptions,
-            correctAnswerIndex: shuffledOptions.indexOf(correctOption),
-          };
-        });
+      const shuffledOptions = [...q.options].sort(
+        () => Math.random() - 0.5
+      );
 
-      return shuffledQuestions;
-    };
+      return {
+        ...q,
+        options: shuffledOptions,
+        correctAnswerIndex: shuffledOptions.indexOf(correctOption),
+      };
+    });
+
+    return shuffledQuestions.sort(() => Math.random() - 0.5);
+  };
 
   if (!tool) return null;
 
@@ -397,18 +407,23 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({ tool, onClos
               </button>
             ) : (
               <button
-                onClick={() => {
-                  let total = 0;
+              onClick={() => {
+                if (Object.keys(selectedAnswers).length < quiz.length) {
+                  alert("Please answer all 5 questions before submitting.");
+                  return;
+                }
 
-                  quiz.forEach((q) => {
-                    if (selectedAnswers[q._id] === q.correctAnswerIndex) {
-                      total++;
-                    }
-                  });
+                let total = 0;
 
-                  setScore(total);
-                  setSubmitted(true);
-                }}
+                quiz.forEach((q) => {
+                  if (selectedAnswers[q._id] === q.correctAnswerIndex) {
+                    total++;
+                  }
+                });
+
+                setScore(total);
+                setSubmitted(true);
+              }}
                 className="w-full mt-4 rounded-lg bg-[#00ff99] text-black font-semibold py-3 hover:brightness-110 transition"
               >
                 Submit Answers
