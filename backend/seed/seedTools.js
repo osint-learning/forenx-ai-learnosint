@@ -1518,7 +1518,74 @@ const tools = [
     bestPractices: ["Use alongside other search engines"],
     tags: ["mojeek", "search", "osint"],
     relatedTools: ["google", "bing", "brave"]
-  }
+  },
+    // =========================================================
+  // 11. DNSDUMPSTER
+  // =========================================================
+   {
+    name: "DNSDumpster",
+    category: "Domain Investigation",
+    shortDescription:
+      "Discover DNS records, subdomains, hosts and related infrastructure.",
+    description:
+      "DNSDumpster is a DNS reconnaissance and domain intelligence service used to discover publicly observable DNS information associated with a domain. It can help investigators identify DNS records, subdomains, hostnames, IP addresses, nameservers, mail infrastructure and relationships between discovered assets. Its visual presentation can make it useful for beginners who are learning how DNS infrastructure connects different parts of an organization.",
+    purpose:
+      "Discover and visualize publicly observable DNS infrastructure associated with a domain.",
+    whenToUse:
+      "Use during authorized domain reconnaissance when you need to identify subdomains, DNS records, hosts, nameservers, mail servers and related infrastructure from publicly available information.",
+    difficulty: "Beginner",
+    syntax: "Enter a domain into the DNSDumpster web interface.",
+    installation:
+      "No local installation is required. DNSDumpster is accessed through its web interface.",
+    commands: [],
+    examples: [
+      "Search example.com",
+      "Review discovered subdomains",
+      "Inspect discovered IP addresses",
+      "Analyze nameservers and mail servers",
+      "Review the visual DNS relationship map"
+    ],
+    sampleOutput:
+      "A records, MX records, NS records, TXT records, discovered subdomains, hostnames, IP addresses and a visual relationship map.",
+    outputExplanation:
+      "DNSDumpster presents DNS and host relationships discovered for the target domain. A records can connect hostnames to IP addresses, MX records identify mail infrastructure, NS records identify nameservers, and discovered subdomains can expand the investigation scope. Results should be independently validated because DNS information changes over time.",
+    advantages: [
+      "Easy web-based interface",
+      "Useful for DNS reconnaissance",
+      "Can discover subdomains and hosts",
+      "Provides visual infrastructure relationships",
+      "Beginner-friendly"
+    ],
+    limitations: [
+      "Results depend on available public DNS information",
+      "DNS data can become outdated",
+      "Not every subdomain is necessarily discovered",
+      "Some infrastructure may be hidden behind CDNs or security services",
+      "Results do not prove ownership of discovered assets"
+    ],
+    bestPractices: [
+      "Use only authorized domains",
+      "Record the investigation date and time",
+      "Validate important findings with independent DNS sources",
+      "Correlate discovered hosts with certificate and WHOIS information",
+      "Preserve important findings as evidence"
+    ],
+    tags: [
+      "dns",
+      "dnsdumpster",
+      "subdomain",
+      "recon",
+      "infrastructure",
+      "osint"
+    ],
+    relatedTools: [
+      "dnsrecon",
+      "dnsenum",
+      "fierce",
+      "subfinder",
+      "crtsh"
+    ]
+  },
 ];
 
 async function seedTools() {
@@ -1528,13 +1595,107 @@ async function seedTools() {
     console.log("MongoDB connected");
 
     for (const tool of tools) {
+
+      // =========================================================
+      // NORMALIZE COMMANDS
+      // Tool schema expects:
+      // {
+      //   title: String,
+      //   command: String,
+      //   explanation: String
+      // }
+      // =========================================================
+
+      const normalizedCommands = Array.isArray(tool.commands)
+        ? tool.commands.map((item, index) => ({
+            title:
+              item.title ||
+              `${tool.name} Command ${index + 1}`,
+
+            command:
+              item.command || "",
+
+            explanation:
+              item.explanation ||
+              item.description ||
+              item.expectedOutput ||
+              ""
+          }))
+        : [];
+
+
+      // =========================================================
+      // NORMALIZE EXAMPLES
+      // Tool schema expects:
+      // {
+      //   title: String,
+      //   command: String,
+      //   output: String
+      // }
+      // =========================================================
+
+      const normalizedExamples = Array.isArray(tool.examples)
+        ? tool.examples.map((example, index) => {
+
+            // If example is already an object
+            if (
+              example &&
+              typeof example === "object"
+            ) {
+              return {
+                title:
+                  example.title ||
+                  `${tool.name} Example ${index + 1}`,
+
+                command:
+                  example.command || "",
+
+                output:
+                  example.output ||
+                  example.expectedOutput ||
+                  example.description ||
+                  ""
+              };
+            }
+
+            // If example is currently a string
+            return {
+              title:
+                `${tool.name} Example ${index + 1}`,
+
+              command:
+                example,
+
+              output:
+                `Example usage of ${tool.name}.`
+            };
+          })
+        : [];
+
+
+      // =========================================================
+      // CREATE FINAL TOOL OBJECT
+      // =========================================================
+
+      const normalizedTool = {
+        ...tool,
+
+        commands: normalizedCommands,
+
+        examples: normalizedExamples,
+
+        isPublished: true
+      };
+
+
+      // =========================================================
+      // SAVE TOOL
+      // =========================================================
+
       await Tool.findOneAndUpdate(
         { name: tool.name },
         {
-          $set: {
-            ...tool,
-            isPublished: true
-          }
+          $set: normalizedTool
         },
         {
           upsert: true,
@@ -1546,8 +1707,12 @@ async function seedTools() {
       console.log(`Updated: ${tool.name}`);
     }
 
-    console.log(`\n✅ ${tools.length} tools updated successfully.`);
+    console.log(
+      `\n✅ ${tools.length} tools updated successfully.`
+    );
+
     process.exit(0);
+
   } catch (error) {
     console.error("❌ Tool seeding failed:", error);
     process.exit(1);
