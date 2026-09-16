@@ -149,59 +149,48 @@ const getExpectedValue = (
     output,
     expectedField
 ) => {
-
-    if (
-        !output ||
-        !expectedField
-    ) {
+    if (!output || !expectedField) {
         return null;
     }
+
+    // ==========================================
+    // WHOIS OUTPUT
+    // ==========================================
 
     const whois =
         output.whois ||
         output.data?.whois ||
         null;
 
-
     switch (expectedField) {
-
         case "registrar":
-
             return (
                 whois?.registrar ||
                 null
             );
 
-
         case "creationDate":
-
             return (
                 whois?.created ||
                 whois?.creationDate ||
                 null
             );
 
-
         case "updatedDate":
-
             return (
                 whois?.updated ||
                 whois?.updatedDate ||
                 null
             );
 
-
         case "expirationDate":
-
             return (
                 whois?.expires ||
                 whois?.expirationDate ||
                 null
             );
 
-
         case "nameServer":
-
             if (
                 Array.isArray(
                     whois?.nameServers
@@ -215,44 +204,73 @@ const getExpectedValue = (
                 null
             );
 
-
         case "dnssec":
-
             return (
                 whois?.dnssec ||
                 null
             );
 
-
         case "status":
-
             return (
                 whois?.status ||
                 null
             );
 
-
         case "registrant":
-
             return (
                 whois?.registrant ||
                 null
             );
 
-
         case "whois":
-
             return whois
                 ? "available"
                 : null;
 
+        // ==========================================
+        // NSLOOKUP OUTPUT
+        // ==========================================
+
+        case "server":
+            return (
+                output.server ||
+                null
+            );
+
+        case "serverAddress":
+            return (
+                output.serverAddress ||
+                null
+            );
+
+        case "address":
+        case "addresses":
+            return (
+                Array.isArray(output.addresses)
+                    ? output.addresses
+                    : output.addresses
+                        ? [output.addresses]
+                        : null
+            );
+        case "responseType":
+            return output.responseType || null;
+        // ==========================================
+        // GENERIC DIRECT OUTPUT FIELD
+        // ==========================================
 
         default:
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    output,
+                    expectedField
+                )
+            ) {
+                return output[expectedField];
+            }
 
             return null;
     }
 };
-
 
 // ======================================================
 // EVALUATE LAB ANSWER

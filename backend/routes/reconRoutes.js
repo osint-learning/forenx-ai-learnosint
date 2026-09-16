@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 
 const router = express.Router();
 
@@ -9,7 +9,8 @@ const {
     sslScan,
     robotsScan,
     fullReconScan,
-    terminalCommand
+    terminalCommand,
+    getPracticeToolsStatus,
 } = require("../controllers/reconController");
 const {
     protect,
@@ -28,4 +29,6 @@ router.post("/metadata", protect, metadataScan);
 router.post("/whois", protect, whoisScan);
 router.post("/fullscan", protect, fullReconScan);
 router.post("/terminal", protect, terminalCommand);
+router.get("/tools/status", protect, getPracticeToolsStatus);
+
 module.exports = router;
