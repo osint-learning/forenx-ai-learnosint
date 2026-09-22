@@ -18,6 +18,9 @@ export const ReconEngine: React.FC = () => {
   const [scanResult, setScanResult] = useState<any>(null);
 
   const [showAllRobotsRules, setShowAllRobotsRules] = useState(false);
+  const robotsDisallow = Array.isArray(scanResult?.robots?.disallow)
+  ? scanResult.robots.disallow
+  : [];
 
   const [isSendingToInvestigate, setIsSendingToInvestigate] = useState(false);
   const [investigateStatus, setInvestigateStatus] = useState<{
@@ -984,7 +987,7 @@ export const ReconEngine: React.FC = () => {
               </span>
 
               <Badge variant="purple">
-                {scanResult.robots.disallow.length}
+                {robotsDisallow.length}
               </Badge>
 
             </div>
@@ -1000,13 +1003,13 @@ export const ReconEngine: React.FC = () => {
 
             <div className="space-y-2">
 
-              {scanResult.robots.disallow.length > 0 ? (
+              {robotsDisallow.length > 0 ? (
 
-              scanResult.robots.disallow
+              robotsDisallow
                 .slice(
                   0,
                   showAllRobotsRules
-                    ? scanResult.robots.disallow.length
+                    ? robotsDisallow.length
                     : 8
                 )
                   .map((rule: string, index: number) => (
@@ -1030,7 +1033,7 @@ export const ReconEngine: React.FC = () => {
 
             </div>
 
-            {scanResult.robots.disallow.length > 8 && (
+            {robotsDisallow.length > 8 && (
 
               <div className="mt-4 text-center">
 
@@ -1041,7 +1044,7 @@ export const ReconEngine: React.FC = () => {
               >
                 {showAllRobotsRules
                   ? "Show Less"
-                  : `+ ${scanResult.robots.disallow.length - 8} More Rules`}
+                  : `+ ${robotsDisallow.length - 8} More Rules`}
               </button>
 
               </div>

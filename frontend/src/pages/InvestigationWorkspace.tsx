@@ -17,6 +17,13 @@ import {
   Layers,
   Database,
   RefreshCw,
+  Globe,
+  Lock,
+  Cpu,
+  FileCode,
+  FileText,
+  ShieldCheck,
+  Tag
 } from 'lucide-react';
 import { OsintService } from '../services/api';
 import type { EvidenceNode, EvidenceConnection, InvestigationRecord } from '../types';
@@ -165,6 +172,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
   const [newLabel, setNewLabel] = useState('');
   const [newType, setNewType] = useState<EvidenceNode['type']>('Domain');
+  const [showAllRobotsRules, setShowAllRobotsRules] = useState(false);
 
   const fetchInvestigations = async () => {
     try {
@@ -202,6 +210,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
   const handleSelectInvestigation = (item: InvestigationRecord) => {
     setSelectedInvestigation(item);
+    setShowAllRobotsRules(false);
     const { nodes: builtNodes, connections: builtConnections } = buildEvidenceFromRecon(
       item.target || item.domain || 'Target',
       item.reconData
@@ -241,6 +250,8 @@ export const InvestigationWorkspace: React.FC = () => {
     setNewLabel('');
   };
 
+  const recon = selectedInvestigation?.reconData || {};
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -251,7 +262,7 @@ export const InvestigationWorkspace: React.FC = () => {
             INVESTIGATION WORKSPACE <span className="neon-text-emerald">// DETECTIVE WALL</span>
           </h1>
           <p className="text-slate-400 font-mono text-xs sm:text-sm mt-1">
-            Visual entity link graph and evidence mapping populated from real Recon Engine investigations.
+            Visual entity link graph, evidence cards, and real Recon Engine intelligence dossier.
           </p>
         </div>
 
@@ -325,7 +336,7 @@ export const InvestigationWorkspace: React.FC = () => {
 
       {/* INVESTIGATION HISTORY LIST & DETECTIVE WALL */}
       {!loading && !error && investigations.length > 0 && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Active Cases Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -336,7 +347,7 @@ export const InvestigationWorkspace: React.FC = () => {
             </div>
             <button
               onClick={fetchInvestigations}
-              className="text-xs font-mono text-[#00ff99] hover:underline flex items-center gap-1"
+              className="text-xs font-mono text-[#00ff99] hover:underline flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw size={12} /> Refresh
             </button>
@@ -418,75 +429,489 @@ export const InvestigationWorkspace: React.FC = () => {
             })}
           </div>
 
-          {/* Interactive Detective Wall Canvas */}
+          {/* Detective Wall Canvas */}
           {selectedInvestigation && (
-            <GlassCard glow="emerald" className="p-6 relative min-h-[500px] overflow-hidden cyber-grid">
-              <div className="absolute top-4 left-6 font-mono text-xs text-[#00ff99] flex items-center gap-2">
-                <Pin size={14} />
-                <span>
-                  ACTIVE CASE: <strong className="text-white">{selectedInvestigation.target || selectedInvestigation.domain}</strong> ({nodes.length} EVIDENCE NODES PINNED)
-                </span>
-              </div>
+            <div className="space-y-8">
+              <GlassCard glow="emerald" className="p-6 relative min-h-[500px] overflow-hidden cyber-grid">
+                <div className="absolute top-4 left-6 font-mono text-xs text-[#00ff99] flex items-center gap-2">
+                  <Pin size={14} />
+                  <span>
+                    ACTIVE CASE: <strong className="text-white">{selectedInvestigation.target || selectedInvestigation.domain}</strong> ({nodes.length} EVIDENCE NODES PINNED)
+                  </span>
+                </div>
 
-              {/* Node Link SVG Canvas */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                {connections.map((c, i) => {
-                  const from = nodes.find(n => n.id === c.fromId);
-                  const to = nodes.find(n => n.id === c.toId);
-                  if (!from || !to) return null;
-                  return (
-                    <g key={i}>
-                      <line
-                        x1={from.x + 80}
-                        y1={from.y + 35}
-                        x2={to.x + 80}
-                        y2={to.y + 35}
-                        stroke="#00ff99"
-                        strokeWidth="1.5"
-                        strokeDasharray="4 4"
-                        opacity="0.6"
-                      />
-                      <text
-                        x={(from.x + to.x) / 2 + 30}
-                        y={(from.y + to.y) / 2 + 25}
-                        fill="#7efeff"
-                        fontSize="10"
-                        fontFamily="monospace"
-                      >
-                        {c.label} ({c.confidence}%)
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+                {/* Node Link SVG Canvas */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                  {connections.map((c, i) => {
+                    const from = nodes.find(n => n.id === c.fromId);
+                    const to = nodes.find(n => n.id === c.toId);
+                    if (!from || !to) return null;
+                    return (
+                      <g key={i}>
+                        <line
+                          x1={from.x + 80}
+                          y1={from.y + 35}
+                          x2={to.x + 80}
+                          y2={to.y + 35}
+                          stroke="#00ff99"
+                          strokeWidth="1.5"
+                          strokeDasharray="4 4"
+                          opacity="0.6"
+                        />
+                        <text
+                          x={(from.x + to.x) / 2 + 30}
+                          y={(from.y + to.y) / 2 + 25}
+                          fill="#7efeff"
+                          fontSize="10"
+                          fontFamily="monospace"
+                        >
+                          {c.label} ({c.confidence}%)
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
 
-              {/* Floating Evidence Cards Nodes */}
-              <div className="relative z-10 w-full h-[450px]">
-                {nodes.map(node => (
-                  <div
-                    key={node.id}
-                    className="absolute cursor-move transition-transform hover:scale-105"
-                    style={{ left: `${node.x}px`, top: `${node.y}px` }}
-                  >
-                    <GlassCard
-                      glow={node.status === 'Malicious' ? 'none' : 'emerald'}
-                      className={`w-52 p-3 space-y-2 border ${
-                        node.status === 'Malicious' ? 'border-rose-500/60 bg-rose-950/20' : 'border-[#00ff99]/40'
-                      }`}
+                {/* Floating Evidence Cards Nodes */}
+                <div className="relative z-10 w-full h-[450px]">
+                  {nodes.map(node => (
+                    <div
+                      key={node.id}
+                      className="absolute cursor-move transition-transform hover:scale-105"
+                      style={{ left: `${node.x}px`, top: `${node.y}px` }}
                     >
-                      <div className="flex items-center justify-between">
-                        <Badge variant={node.type === 'IP' ? 'cyan' : node.type === 'Document' ? 'purple' : 'emerald'}>
-                          {node.type}
-                        </Badge>
-                        <span className="text-[10px] font-mono text-slate-400">{node.status}</span>
-                      </div>
-                      <div className="font-mono font-bold text-white text-xs truncate">{node.label}</div>
-                      <p className="text-[10px] font-mono text-slate-400 line-clamp-2">{node.notes}</p>
-                    </GlassCard>
+                      <GlassCard
+                        glow={node.status === 'Malicious' ? 'none' : 'emerald'}
+                        className={`w-52 p-3 space-y-2 border ${
+                          node.status === 'Malicious' ? 'border-rose-500/60 bg-rose-950/20' : 'border-[#00ff99]/40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <Badge variant={node.type === 'IP' ? 'cyan' : node.type === 'Document' ? 'purple' : 'emerald'}>
+                            {node.type}
+                          </Badge>
+                          <span className="text-[10px] font-mono text-slate-400">{node.status}</span>
+                        </div>
+                        <div className="font-mono font-bold text-white text-xs truncate">{node.label}</div>
+                        <p className="text-[10px] font-mono text-slate-400 line-clamp-2">{node.notes}</p>
+                      </GlassCard>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+
+              {/* ========================================================================= */}
+              {/* RECON INTELLIGENCE DOSSIER (REAL STORED RECON ENGINE OUTPUT) */}
+              {/* ========================================================================= */}
+              <div className="space-y-6">
+                <div className="border-b border-[#00ff99]/20 pb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Radar className="text-[#00ff99]" size={24} />
+                    <h2 className="text-xl font-bold font-mono text-white tracking-wide">
+                      RECON INTELLIGENCE DOSSIER <span className="neon-text-emerald">// {selectedInvestigation.target || selectedInvestigation.domain}</span>
+                    </h2>
                   </div>
-                ))}
+                  <Badge variant="emerald" className="font-mono text-xs">
+                    REAL RECON DATA
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* 1. DOMAIN & DNS INFORMATION */}
+                  {recon.domain && (
+                    <GlassCard glow="emerald" className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#00ff99] flex items-center gap-2 font-mono">
+                          <Globe size={18} /> Domain & DNS Information
+                        </h3>
+                        <Badge variant="emerald">DNS</Badge>
+                      </div>
+
+                      <div className="space-y-3 font-mono text-xs">
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Target Domain:</span>
+                          <span className="text-white font-semibold">{recon.domain.domain || selectedInvestigation.target}</span>
+                        </div>
+
+                        {recon.domain.ip && (
+                          <div className="flex justify-between border-b border-white/10 pb-2">
+                            <span className="text-slate-400">Primary IP:</span>
+                            <span className="text-cyan-400 font-semibold">{recon.domain.ip}</span>
+                          </div>
+                        )}
+
+                        {recon.domain.a && recon.domain.a.length > 0 && (
+                          <div className="border-b border-white/10 pb-2">
+                            <span className="text-slate-400 block mb-1.5">A Records:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {recon.domain.a.map((ipVal: string, idx: number) => (
+                                <Badge key={idx} variant="cyan" className="font-mono">{ipVal}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {recon.domain.mx && recon.domain.mx.length > 0 && (
+                          <div className="border-b border-white/10 pb-2">
+                            <span className="text-slate-400 block mb-1.5">MX (Mail Exchange) Records:</span>
+                            <div className="space-y-1">
+                              {recon.domain.mx.map((mxVal: any, idx: number) => (
+                                <div key={idx} className="text-slate-300 truncate">
+                                  {typeof mxVal === 'object' ? `${mxVal.exchange || mxVal.host || ''} (${mxVal.priority || 0})` : String(mxVal)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {recon.domain.ns && recon.domain.ns.length > 0 && (
+                          <div className="border-b border-white/10 pb-2">
+                            <span className="text-slate-400 block mb-1.5">Nameservers (NS):</span>
+                            <div className="space-y-1">
+                              {recon.domain.ns.map((nsVal: string, idx: number) => (
+                                <div key={idx} className="text-slate-300 truncate">{nsVal}</div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {recon.domain.txt && recon.domain.txt.length > 0 && (
+                          <div className="pb-1">
+                            <span className="text-slate-400 block mb-1.5">TXT Records ({recon.domain.txt.length}):</span>
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {recon.domain.txt.map((txtVal: any, idx: number) => (
+                                <div key={idx} className="bg-black/30 p-1.5 rounded text-[11px] text-slate-300 break-all border border-white/5">
+                                  {Array.isArray(txtVal) ? txtVal.join(' ') : String(txtVal)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  )}
+
+                  {/* 2. WHOIS RECORD */}
+                  {recon.whois && (
+                    <GlassCard glow="cyan" className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#7efeff] flex items-center gap-2 font-mono">
+                          <FileText size={18} /> WHOIS Details
+                        </h3>
+                        <Badge variant="cyan">WHOIS</Badge>
+                      </div>
+
+                      <div className="space-y-3 font-mono text-xs">
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Registrar:</span>
+                          <span className="text-white text-right truncate max-w-[200px]">
+                            {recon.whois.registrar || recon.whois.registrarName || 'Unknown'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Created Date:</span>
+                          <span className="text-slate-300">{recon.whois.creationDate || recon.whois.created || 'N/A'}</span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Expiry Date:</span>
+                          <span className="text-slate-300">{recon.whois.registryExpiryDate || recon.whois.expires || 'N/A'}</span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Updated Date:</span>
+                          <span className="text-slate-300">{recon.whois.updatedDate || recon.whois.changed || 'N/A'}</span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Registrant Org:</span>
+                          <span className="text-white text-right truncate max-w-[200px]">
+                            {recon.whois.registrantOrganization || recon.whois.org || 'Redacted / Private'}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Registrant Country:</span>
+                          <span className="text-slate-300">{recon.whois.registrantCountry || recon.whois.country || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  )}
+
+                  {/* 3. SSL/TLS CERTIFICATE */}
+                  {recon.ssl && (
+                    <GlassCard glow="emerald" className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#00ff99] flex items-center gap-2 font-mono">
+                          <Lock size={18} /> SSL / TLS Certificate
+                        </h3>
+                        <Badge variant={recon.ssl.valid ? 'emerald' : 'danger'}>
+                          {recon.ssl.valid ? 'VALID CERTIFICATE' : 'INVALID / EXPIRED'}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-3 font-mono text-xs">
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Issuer:</span>
+                          <span className="text-white font-semibold text-right truncate max-w-[200px]">
+                            {typeof recon.ssl.issuer === 'object'
+                              ? (recon.ssl.issuer.O || recon.ssl.issuer.CN || 'Unknown')
+                              : String(recon.ssl.issuer || 'Unknown')}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Protocol:</span>
+                          <span className="text-cyan-400 font-semibold">{recon.ssl.protocol || 'TLS'}</span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Valid From:</span>
+                          <span className="text-slate-300">{recon.ssl.validFrom || 'N/A'}</span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Valid To:</span>
+                          <span className="text-slate-300">{recon.ssl.validTo || 'N/A'}</span>
+                        </div>
+
+                        {recon.ssl.daysRemaining !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Days Remaining:</span>
+                            <span className={recon.ssl.daysRemaining < 30 ? 'text-rose-400 font-bold' : 'text-[#00ff99] font-bold'}>
+                              {recon.ssl.daysRemaining} days
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  )}
+
+                  {/* 4. SECURITY HEADERS */}
+                  {recon.headers && (
+                    <GlassCard glow="cyan" className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#7efeff] flex items-center gap-2 font-mono">
+                          <ShieldCheck size={18} /> Security Headers Analysis
+                        </h3>
+                        {recon.headers.grade && (
+                          <Badge variant="purple" className="font-mono font-bold">
+                            GRADE {recon.headers.grade}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="space-y-3 font-mono text-xs">
+                        {recon.headers.server && (
+                          <div className="flex justify-between border-b border-white/10 pb-2">
+                            <span className="text-slate-400">Server Banner:</span>
+                            <span className="text-white font-semibold truncate max-w-[200px]">{recon.headers.server}</span>
+                          </div>
+                        )}
+
+                        {recon.headers.score !== undefined && (
+                          <div className="flex justify-between border-b border-white/10 pb-2">
+                            <span className="text-slate-400">Security Score:</span>
+                            <span className="text-[#00ff99] font-semibold">{recon.headers.score} / 100</span>
+                          </div>
+                        )}
+
+                        {recon.headers.present && Object.keys(recon.headers.present).length > 0 && (
+                          <div className="border-b border-white/10 pb-2">
+                            <span className="text-slate-400 block mb-1.5">Present Security Headers:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.keys(recon.headers.present).map((hName, idx) => (
+                                <Badge key={idx} variant="emerald">{hName}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {recon.headers.missing && Array.isArray(recon.headers.missing) && recon.headers.missing.length > 0 && (
+                          <div>
+                            <span className="text-slate-400 block mb-1.5">Missing Security Headers:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {recon.headers.missing.map((hName: string, idx: number) => (
+                                <Badge key={idx} variant="danger">{hName}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  )}
+
+                  {/* 5. DETECTED TECHNOLOGIES */}
+                  {recon.technology && (
+                    <GlassCard glow="cyan" className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#7efeff] flex items-center gap-2 font-mono">
+                          <Cpu size={18} /> Technologies & Stack
+                        </h3>
+                        <Badge variant="cyan">STACK</Badge>
+                      </div>
+
+                      <div className="space-y-4 font-mono text-xs">
+                        {Array.isArray(recon.technology.categories) && recon.technology.categories.length > 0 ? (
+                          recon.technology.categories.map((cat: any, idx: number) => (
+                            <div key={idx} className="border-b border-white/10 pb-3 last:border-0 last:pb-0">
+                              <span className="text-slate-400 block mb-1.5 font-bold uppercase tracking-wider text-[11px]">
+                                {cat.name || 'Technology'}:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {Array.isArray(cat.technologies) ? (
+                                  cat.technologies.map((t: any, tIdx: number) => (
+                                    <Badge key={tIdx} variant="purple" className="font-mono">
+                                      {typeof t === 'object' ? (t.name || t.version ? `${t.name} ${t.version || ''}` : JSON.stringify(t)) : String(t)}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Badge variant="purple">{cat.name}</Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-slate-500">No specific technologies identified.</p>
+                        )}
+                      </div>
+                    </GlassCard>
+                  )}
+
+                  {/* 6. ROBOTS.TXT & RULES */}
+                  {recon.robots && (
+                    <GlassCard glow="emerald" className="p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#00ff99] flex items-center gap-2 font-mono">
+                          <FileCode size={18} /> robots.txt Rules
+                        </h3>
+                        <Badge variant="emerald">CRAWL RULES</Badge>
+                      </div>
+
+                      <div className="space-y-3 font-mono text-xs">
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Robots URL:</span>
+                          <span className="text-[#7efeff] truncate max-w-[200px]">{recon.robots.url || 'N/A'}</span>
+                        </div>
+
+                        <div className="flex justify-between border-b border-white/10 pb-2">
+                          <span className="text-slate-400">Sitemaps:</span>
+                          <span className="text-white truncate max-w-[200px]">{recon.robots.sitemaps || 'None Found'}</span>
+                        </div>
+
+                        {Array.isArray(recon.robots.disallow) && (
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-slate-400">Total Disallow Rules:</span>
+                              <Badge variant="purple">{recon.robots.disallow.length}</Badge>
+                            </div>
+
+                            {recon.robots.disallow.length > 0 ? (
+                              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                {recon.robots.disallow
+                                  .slice(0, showAllRobotsRules ? recon.robots.disallow.length : 6)
+                                  .map((rule: string, rIdx: number) => (
+                                    <div key={rIdx} className="bg-black/30 border border-white/10 rounded px-2 py-1 text-slate-300 truncate">
+                                      {rule}
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <p className="text-slate-500">No Disallow Rules present.</p>
+                            )}
+
+                            {recon.robots.disallow.length > 6 && (
+                              <button
+                                onClick={() => setShowAllRobotsRules(!showAllRobotsRules)}
+                                className="mt-2 text-[#00ff99] hover:underline text-[11px] block cursor-pointer"
+                              >
+                                {showAllRobotsRules ? 'Show Less' : `+ ${recon.robots.disallow.length - 6} More Rules`}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  )}
+
+                  {/* 7. PAGE METADATA */}
+                  {recon.metadata && (
+                    <GlassCard glow="emerald" className="p-6 md:col-span-2">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-bold text-[#00ff99] flex items-center gap-2 font-mono">
+                          <Tag size={18} /> Web Page Metadata Analysis
+                        </h3>
+                        <Badge variant="emerald">METADATA</Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
+                        <div className="space-y-3">
+                          <div className="border-b border-white/10 pb-2">
+                            <span className="text-slate-400 block mb-1">Page Title:</span>
+                            <span className="text-white font-semibold break-words">
+                              {recon.metadata?.metadata?.title || recon.metadata?.title || 'Not Found'}
+                            </span>
+                          </div>
+
+                          <div className="border-b border-white/10 pb-2">
+                            <span className="text-slate-400 block mb-1">Description:</span>
+                            <span className="text-slate-300 break-words">
+                              {recon.metadata?.metadata?.description || recon.metadata?.description || 'Not Found'}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between border-b border-white/10 pb-2">
+                            <span className="text-slate-400">Publisher:</span>
+                            <span className="text-white font-semibold">
+                              {recon.metadata?.metadata?.publisher || recon.metadata?.publisher || 'Unknown'}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Charset / Lang:</span>
+                            <span className="text-slate-300">
+                              {recon.metadata?.charset || 'N/A'} / {recon.metadata?.metadata?.lang || recon.metadata?.lang || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {recon.metadata?.keywords && (
+                            <div className="border-b border-white/10 pb-2">
+                              <span className="text-slate-400 block mb-1.5">Keywords:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {recon.metadata.keywords.split(',').map((kw: string, kwIdx: number) => (
+                                  <Badge key={kwIdx} variant="purple">{kw.trim()}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {recon.metadata?.metadata?.url && (
+                            <div className="border-b border-white/10 pb-2">
+                              <span className="text-slate-400 block mb-1">Source URL:</span>
+                              <span className="text-cyan-400 break-all">{recon.metadata.metadata.url}</span>
+                            </div>
+                          )}
+
+                          {recon.metadata?.metadata?.logo && (
+                            <div>
+                              <span className="text-slate-400 block mb-1.5">Website Logo:</span>
+                              <img
+                                src={recon.metadata.metadata.logo}
+                                alt="Logo"
+                                className="w-10 h-10 rounded bg-white p-1 object-contain"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </GlassCard>
+                  )}
+                </div>
               </div>
-            </GlassCard>
+            </div>
           )}
         </div>
       )}
