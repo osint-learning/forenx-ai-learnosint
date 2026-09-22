@@ -13,18 +13,23 @@ function AppLayout() {
     location.pathname === "/login" ||
     location.pathname === "/register";
 
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const isAdminUser = user?.role === "admin";
+  const hideStudentShell = isAuthPage || isAdminRoute || isAdminUser;
+
   const isLoggedIn = !!user;
+
   return (
     <div className="min-h-screen bg-[#030303] text-slate-100 relative overflow-hidden flex flex-col selection:bg-[#00ff99] selection:text-black">
       {/* Background */}
       <ParticleField />
 
-      {/* Show only after login */}
-      {!isAuthPage && isLoggedIn && <Navbar />}
+      {/* Show student Navbar only for non-admin student pages */}
+      {!hideStudentShell && isLoggedIn && <Navbar />}
 
       <main
         className={
-          isAuthPage
+          hideStudentShell
             ? "flex-1 z-10 relative"
             : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-8 z-10 relative"
         }
@@ -32,11 +37,11 @@ function AppLayout() {
         <AppRouter />
       </main>
 
-      {/* Show only after login */}
-      {!isAuthPage && isLoggedIn && <AiMentorDrawer />}
+      {/* Show AI Mentor only for students */}
+      {!hideStudentShell && isLoggedIn && <AiMentorDrawer />}
 
-      {/* Show only after login */}
-      {!isAuthPage && isLoggedIn && <Footer />}
+      {/* Show Footer only for students */}
+      {!hideStudentShell && isLoggedIn && <Footer />}
     </div>
   );
 }

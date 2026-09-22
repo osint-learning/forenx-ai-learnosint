@@ -1,11 +1,18 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { IntelligenceCore } from '../components/intelligence/IntelligenceCore';
 import { OrbitSystem } from '../components/intelligence/OrbitSystem';
 import { Sparkles } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
+  const { user } = useAuth();
   const { tools } = useApp();
+
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <div className="space-y-12">

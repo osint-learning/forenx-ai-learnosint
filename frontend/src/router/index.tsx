@@ -23,13 +23,16 @@ export const AppRouter: React.FC = () => {
 
   return (
     <Routes>
-
-      {/* Redirect root */}
+      {/* Redirect root based on user role */}
       <Route
         path="/"
         element={
           user ? (
-            <Navigate to="/dashboard" replace />
+            user.role === "admin" ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
           ) : (
             <Navigate to="/login" replace />
           )
@@ -45,7 +48,11 @@ export const AppRouter: React.FC = () => {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            {user?.role === "admin" ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Dashboard />
+            )}
           </ProtectedRoute>
         }
       />
@@ -54,7 +61,7 @@ export const AppRouter: React.FC = () => {
         path="/learn"
         element={
           <ProtectedRoute>
-            <Learn />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <Learn />}
           </ProtectedRoute>
         }
       />
@@ -63,25 +70,25 @@ export const AppRouter: React.FC = () => {
         path="/tool-explorer"
         element={
           <ProtectedRoute>
-            <ToolExplorer />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <ToolExplorer />}
           </ProtectedRoute>
         }
       />
 
-        <Route
-          path="/terminal"
-          element={
-            <ProtectedRoute>
-              <IndependentTerminal />
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path="/terminal"
+        element={
+          <ProtectedRoute>
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <IndependentTerminal />}
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/practice-labs"
         element={
           <ProtectedRoute>
-            <PracticeLabs />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <PracticeLabs />}
           </ProtectedRoute>
         }
       />
@@ -90,7 +97,7 @@ export const AppRouter: React.FC = () => {
         path="/recon"
         element={
           <ProtectedRoute>
-            <ReconEngine />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <ReconEngine />}
           </ProtectedRoute>
         }
       />
@@ -99,7 +106,7 @@ export const AppRouter: React.FC = () => {
         path="/investigations"
         element={
           <ProtectedRoute>
-            <InvestigationWorkspace />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <InvestigationWorkspace />}
           </ProtectedRoute>
         }
       />
@@ -108,7 +115,7 @@ export const AppRouter: React.FC = () => {
         path="/threats"
         element={
           <ProtectedRoute>
-            <ThreatIntelligence />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <ThreatIntelligence />}
           </ProtectedRoute>
         }
       />
@@ -117,7 +124,7 @@ export const AppRouter: React.FC = () => {
         path="/reports"
         element={
           <ProtectedRoute>
-            <Reports />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <Reports />}
           </ProtectedRoute>
         }
       />
@@ -126,7 +133,7 @@ export const AppRouter: React.FC = () => {
         path="/profile"
         element={
           <ProtectedRoute>
-            <Profile />
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <Profile />}
           </ProtectedRoute>
         }
       />
@@ -135,19 +142,27 @@ export const AppRouter: React.FC = () => {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute adminOnly>
             <AdminDashboard />
           </ProtectedRoute>
         }
       />
 
-
       {/* Unknown Route */}
       <Route
         path="*"
-        element={<Navigate to="/" replace />}
+        element={
+          user ? (
+            user.role === "admin" ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
-
     </Routes>
   );
 };

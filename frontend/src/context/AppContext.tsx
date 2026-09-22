@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   createContext,
   useContext,
   useEffect,
@@ -281,11 +281,15 @@ export const AppProvider: React.FC<{
               : [],
 
           createdAt: user.createdAt || '',
-          nextLevelXp: (user.level || 1) * 1000,
+          nextLevelXp: (user.level || 1) * 5000,
           streakDays: 3,
           rankPosition: 1,
           codename: (user.fullName || 'AGENT').toUpperCase().replace(/\s+/g, '_'),
-          accuracyRate: 98
+          accuracyRate: 98,
+          profileImage: user.profileImage || '',
+          isVerified: Boolean(user.isVerified),
+          completedLessons: Array.isArray(user.completedLessons) ? user.completedLessons : [],
+          completedLabs: Array.isArray(user.completedLabs) ? user.completedLabs : []
         };
 
 

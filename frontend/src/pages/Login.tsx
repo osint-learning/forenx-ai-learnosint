@@ -15,12 +15,20 @@ export function Login() {
   // Already logged in?
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      if (user.role === 'admin') {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     }
   }, [user, navigate]);
 
   const handleSuccess = () => {
-    navigate("/dashboard", { replace: true });
+    if (user?.role === 'admin') {
+      navigate("/admin", { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
   };
 
   const handleNavigateToRegister = () => {

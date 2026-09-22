@@ -10,7 +10,6 @@ import {
   FlaskConical,
   BarChart3,
   FileText,
-  ArrowLeft,
   LogOut,
   Shield,
   Activity
@@ -124,14 +123,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           <div className="px-3 py-1.5 text-[10px] font-mono text-slate-500 truncate">
             OP: <span className="text-slate-300 font-semibold">{user?.fullName || 'Administrator'}</span>
           </div>
-
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 text-xs font-mono text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/40 transition-all cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            <span>Student Dashboard</span>
-          </button>
 
           <button
             onClick={handleLogout}
