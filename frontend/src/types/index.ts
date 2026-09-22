@@ -526,3 +526,14 @@ export interface AdminLab {
   isActive: boolean;
   createdAt?: string;
 }
+
+export interface InvestigationRecord {
+  _id: string;
+  user: string;
+  target: string;
+  domain?: string;
+  reconData: any;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}

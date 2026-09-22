@@ -1,5 +1,5 @@
 ﻿import axios from 'axios';
-import type {  OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport , AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab } from '../types';
+import type {  OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport , AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab, InvestigationRecord } from '../types';
 import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
 const API_BASE_URL =
@@ -509,6 +509,66 @@ async resetLabProgress(
       throw new Error(
         error?.response?.data?.message ||
         "Failed to send Recon result to Investigation."
+      );
+    }
+  },
+
+  async getInvestigations(): Promise<InvestigationRecord[]> {
+    const token =
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Please login before loading investigations.");
+    }
+
+    try {
+      const response = await apiClient.get("/investigations", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      return response.data.data;
+    } catch (error: any) {
+      console.error(
+        "Failed to load investigations:",
+        error?.response?.status,
+        error?.response?.data || error?.message
+      );
+      throw new Error(
+        error?.response?.data?.message ||
+        "Failed to load investigations."
+      );
+    }
+  },
+
+  async getInvestigationById(id: string): Promise<InvestigationRecord> {
+    const token =
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Please login before loading investigation.");
+    }
+
+    try {
+      const response = await apiClient.get("/investigations/" + id, {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      return response.data.data;
+    } catch (error: any) {
+      console.error(
+        "Failed to load investigation:",
+        error?.response?.status,
+        error?.response?.data || error?.message
+      );
+      throw new Error(
+        error?.response?.data?.message ||
+        "Failed to load investigation details."
       );
     }
   },
