@@ -1,4 +1,4 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -13,6 +13,7 @@ const userRoutes = require("./routes/userRoutes");
 const connectDB = require("./config/db");
 const quizRoutes = require("./routes/quizRoutes");
 const lessonProgressRoutes = require("./routes/lessonProgressRoutes");
+const investigationRoutes = require("./routes/investigationRoutes");
 
 const metadataRoutes = require("./routes/metadataRoutes");
 const labRoutes = require("./routes/labRoutes");
@@ -34,8 +35,8 @@ app.use(
     })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
@@ -43,6 +44,7 @@ app.use(morgan("dev"));
 app.use("/api", require("./routes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/recon", require("./routes/reconRoutes"));
+app.use("/api/investigations", investigationRoutes);
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/admin", adminRoutes);
 app.use("/api/tools", toolRoutes);

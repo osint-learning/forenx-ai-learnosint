@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Radar, Search } from "lucide-react";
+﻿import React, { useState } from "react";
+import { Radar, Search, Send, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 import { GlassCard } from "../components/ui/GlassCard";
 import { GlowButton } from "../components/ui/GlowButton";
@@ -9,6 +9,7 @@ import { OsintService } from "../services/api";
 
 export const ReconEngine: React.FC = () => {
   const [targetInput, setTargetInput] = useState("");
+  const [scannedTarget, setScannedTarget] = useState("");
 
   const [isScanning, setIsScanning] = useState(false);
 
@@ -18,14 +19,22 @@ export const ReconEngine: React.FC = () => {
 
   const [showAllRobotsRules, setShowAllRobotsRules] = useState(false);
 
+  const [isSendingToInvestigate, setIsSendingToInvestigate] = useState(false);
+  const [investigateStatus, setInvestigateStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!targetInput.trim()) return;
+    const currentTarget = targetInput.trim();
+    if (!currentTarget) return;
 
     try {
       setIsScanning(true);
       setScanProgress(10);
+      setInvestigateStatus(null);
 
       const interval = setInterval(() => {
         setScanProgress((prev) => {
@@ -38,19 +47,43 @@ export const ReconEngine: React.FC = () => {
         });
       }, 400);
 
-      const result = await OsintService.executeReconScan(targetInput);
+      const result = await OsintService.executeReconScan(currentTarget);
 
       setTimeout(() => {
         clearInterval(interval);
         setScanProgress(100);
         setScanResult(result);
+        setScannedTarget(currentTarget);
         setIsScanning(false);
       }, 500);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Recon scan failed.");
+      alert(err.message || "Recon scan failed.");
+      setIsScanning(false);
+    }
+  };
+
+  const handleSendToInvestigate = async () => {
+    if (!scanResult || !scannedTarget) return;
+
+    try {
+      setIsSendingToInvestigate(true);
+      setInvestigateStatus(null);
+
+      await OsintService.sendToInvestigation(scannedTarget, scanResult);
+
+      setInvestigateStatus({
+        type: "success",
+        message: "Recon result sent to Investigation successfully.",
+      });
+    } catch (err: any) {
+      setInvestigateStatus({
+        type: "error",
+        message: err.message || "Failed to send Recon result to Investigation.",
+      });
     } finally {
-}
+      setIsSendingToInvestigate(false);
+    }
   };
 
   return (
@@ -193,6 +226,8 @@ export const ReconEngine: React.FC = () => {
 
       {scanResult && (
 
+      <div className="space-y-6">
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
       {/* ================= DOMAIN INFORMATION ================= */}
@@ -237,7 +272,7 @@ export const ReconEngine: React.FC = () => {
 
             <span className="text-[#00ff99] font-mono">
 
-              {scanResult.domain.ipAddresses?.join(", ") || "N/A"}
+              {scanResult.domain?.ipAddresses?.join(", ") || "N/A"}
 
             </span>
 
@@ -304,7 +339,7 @@ export const ReconEngine: React.FC = () => {
           <div className="flex justify-between border-b border-white/10 pb-2">
             <span className="text-slate-400">URL</span>
             <span className="text-white break-all text-right">
-              {scanResult.website.url || "N/A"}
+              {scanResult.website?.url || "N/A"}
             </span>
           </div>
 
@@ -383,12 +418,12 @@ export const ReconEngine: React.FC = () => {
 
             <Badge
               variant={
-                scanResult.ssl.expired
+                scanResult.ssl?.expired
                   ? "warning"
                   : "emerald"
               }
             >
-              {scanResult.ssl.expired ? "Expired" : "Valid"}
+              {scanResult.ssl?.expired ? "Expired" : "Valid"}
             </Badge>
 
           </div>
@@ -473,7 +508,7 @@ export const ReconEngine: React.FC = () => {
 
                 <div
                   className={`h-full transition-all duration-700 ${
-                    scanResult.ssl.expired
+                    scanResult.ssl?.expired
                       ? "bg-red-500"
                       : "bg-[#00ff99]"
                   }`}
@@ -499,12 +534,12 @@ export const ReconEngine: React.FC = () => {
 
               <Badge
                 variant={
-                  scanResult.ssl.expired
+                  scanResult.ssl?.expired
                     ? "warning"
                     : "emerald"
                 }
               >
-                {scanResult.ssl.expired ? "Expired" : "Secure"}
+                {scanResult.ssl?.expired ? "Expired" : "Secure"}
               </Badge>
 
             </div>
@@ -691,7 +726,7 @@ export const ReconEngine: React.FC = () => {
             </span>
 
             <span className="text-white text-right">
-              {scanResult.whois.whois?.registrar || "Unknown"}
+              {scanResult.whois?.whois?.registrar || "Unknown"}
             </span>
 
           </div>
@@ -881,9 +916,9 @@ export const ReconEngine: React.FC = () => {
             </h2>
 
             <Badge
-              variant={scanResult.robots.exists ? "emerald" : "warning"}
+              variant={scanResult.robots?.exists ? "emerald" : "warning"}
             >
-              {scanResult.robots.exists ? "AVAILABLE" : "NOT FOUND"}
+              {scanResult.robots?.exists ? "AVAILABLE" : "NOT FOUND"}
             </Badge>
 
           </div>
@@ -896,7 +931,7 @@ export const ReconEngine: React.FC = () => {
             </p>
 
             <p className="text-white text-lg font-semibold">
-              {scanResult.robots.exists
+              {scanResult.robots?.exists
                 ? "robots.txt Found"
                 : "robots.txt Missing"}
             </p>
@@ -1049,7 +1084,7 @@ export const ReconEngine: React.FC = () => {
             </p>
 
             <p className="text-white font-semibold break-words">
-              {scanResult.metadata.metadata.title || "Not Found"}
+              {scanResult.metadata?.metadata?.title || "Not Found"}
             </p>
 
           </div>
@@ -1232,6 +1267,59 @@ export const ReconEngine: React.FC = () => {
 
         </div>
 
+      </GlassCard>
+
+      </div>
+
+      {/* ================= INVESTIGATION HANDOFF ================= */}
+      <GlassCard glow="emerald" className="p-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Send size={20} className="text-[#00ff99]" />
+              Transfer to Investigation
+            </h3>
+            <p className="text-slate-400 text-sm mt-1">
+              Send complete Recon intelligence results for <span className="text-[#00ff99] font-mono">{scannedTarget || targetInput}</span> to the Investigation workspace.
+            </p>
+          </div>
+
+          <GlowButton
+            variant="primary"
+            onClick={handleSendToInvestigate}
+            disabled={isSendingToInvestigate}
+            className="whitespace-nowrap px-6 py-3 font-semibold"
+          >
+            {isSendingToInvestigate ? (
+              <span className="flex items-center gap-2">
+                <Loader2 size={16} className="animate-spin" />
+                Sending...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Send size={16} />
+                SEND TO INVESTIGATE
+              </span>
+            )}
+          </GlowButton>
+        </div>
+
+        {investigateStatus && (
+          <div
+            className={
+              investigateStatus.type === "success"
+                ? "mt-4 p-4 rounded-xl border flex items-center gap-3 text-sm bg-[#00ff99]/10 border-[#00ff99]/30 text-[#00ff99]"
+                : "mt-4 p-4 rounded-xl border flex items-center gap-3 text-sm bg-red-500/10 border-red-500/30 text-red-400"
+            }
+          >
+            {investigateStatus.type === "success" ? (
+              <CheckCircle2 size={18} className="shrink-0 text-[#00ff99]" />
+            ) : (
+              <AlertCircle size={18} className="shrink-0 text-red-400" />
+            )}
+            <p className="font-medium">{investigateStatus.message}</p>
+          </div>
+        )}
       </GlassCard>
 
       </div>

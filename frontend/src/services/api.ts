@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 import type {  OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport , AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab } from '../types';
 import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
@@ -339,10 +339,7 @@ async getPracticeLabs(): Promise<PracticeLab[]> {
                     : "answer",
 
                 // Use MongoDB progress
-                completed:
-                  savedObjective?.completed ||
-                  objective.completed ||
-                  false,
+                completed: savedObjective?.completed === true,
 
                 hint:
                   objective.type === "command"
@@ -440,9 +437,15 @@ async resetLabProgress(
 },
 
   async executeReconScan(target: string): Promise<any> {
-    try {
-      const token = localStorage.getItem("token");
+    const token =
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token");
 
+    if (!token) {
+      throw new Error("Please login before running Recon Engine.");
+    }
+
+    try {
       const response = await apiClient.post(
         "/recon/fullscan",
         {
@@ -456,43 +459,57 @@ async resetLabProgress(
       );
 
       return response.data.data;
-    } catch {
-      // Mock realistic dynamic scan response
-      const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(target);
-      return {
-        target,
-        timestamp: new Date().toISOString(),
-        riskScore: Math.floor(Math.random() * 45) + 40,
-        ipAddress: isIp ? target : '198.51.100.88',
-        geoCountry: 'United States',
-        openPorts: [
-          { port: 80, service: 'http', state: 'open' },
-          { port: 443, service: 'https (TLS 1.3)', state: 'open' },
-          { port: 22, service: 'ssh (OpenSSH 8.9p1)', state: 'filtered' },
-          { port: 8080, service: 'http-proxy', state: 'open' }
-        ],
-        securityHeaders: [
-          { header: 'Strict-Transport-Security', status: 'Pass' },
-          { header: 'Content-Security-Policy', status: 'Warning' },
-          { header: 'X-Frame-Options', status: 'Pass' },
-          { header: 'X-Content-Type-Options', status: 'Pass' }
-        ],
-        dnsRecords: [
-          { type: 'A', value: isIp ? target : '198.51.100.88' },
-          { type: 'MX', value: 'mail.protection.outlook.com' },
-          { type: 'NS', value: 'ns1.cybersec-cloud.net' },
-          { type: 'TXT', value: 'v=spf1 include:spf.protection.outlook.com ~all' }
-        ],
-        sslStatus: {
-          valid: true,
-          issuer: 'DigiCert TLS Hybrid ECC SHA384 2020 CA1',
-          expiresDays: 142
+    } catch (error: any) {
+      console.error(
+        "Recon scan failed:",
+        error?.response?.status,
+        error?.response?.data || error?.message
+      );
+
+      throw new Error(
+        error?.response?.data?.message ||
+        "Recon scan failed. Please check the backend and authentication."
+      );
+    }
+  },
+
+  async sendToInvestigation(target: string, reconData: any): Promise<any> {
+    const token =
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Please login before sending to Investigation.");
+    }
+
+    try {
+      const response = await apiClient.post(
+        "/investigations",
+        {
+          target,
+          domain: target,
+          reconData,
+          status: "Ready for Investigation",
         },
-        attackSurface: [
-          { threatType: 'Exposed HTTP Staging Endpoint', severity: 'Medium', description: 'Port 8080 reveals unauthenticated debug dashboard.' },
-          { threatType: 'Permissive SPF Policy', severity: 'Low', description: 'Softfail (~all) allows potential email spoofing attempts.' }
-        ]
-      };
+        {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error(
+        "Send to investigation failed:",
+        error?.response?.status,
+        error?.response?.data || error?.message
+      );
+
+      throw new Error(
+        error?.response?.data?.message ||
+        "Failed to send Recon result to Investigation."
+      );
     }
   },
 
