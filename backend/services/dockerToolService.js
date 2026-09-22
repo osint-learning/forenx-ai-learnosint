@@ -107,11 +107,6 @@ const ALLOWED_TOOLS = {
         defaultTimeoutMs: 45000,
         description: "In-depth DNS enumeration tool",
     },
-    spiderfoot: {
-        binary: "spiderfoot",
-        defaultTimeoutMs: 45000,
-        description: "OSINT automation engine",
-    },
     host: {
         binary: "host",
         defaultTimeoutMs: 15000,
@@ -180,12 +175,13 @@ const sanitizeArgs = (args) => {
             .filter((a) => a.length > 0 && !a.includes("\0"));
     }
     if (Array.isArray(args)) {
-        // Flatten any whitespace-separated strings inside array elements
         const flattened = [];
         for (const arg of args) {
             if (typeof arg === "string") {
-                const parts = arg.trim().split(/\s+/).filter((a) => a.length > 0 && !a.includes("\0"));
-                flattened.push(...parts);
+                const str = arg.trim();
+                if (str.length > 0 && !str.includes("\0")) {
+                    flattened.push(str);
+                }
             } else if (arg !== null && arg !== undefined) {
                 const str = String(arg).trim();
                 if (str.length > 0 && !str.includes("\0")) {

@@ -50,9 +50,7 @@ const getLabs = asyncHandler(async (req, res) => {
 
                 return {
                     ...objective.toObject(),
-                    completed:
-                        savedObjective?.completed ||
-                        false,
+                    completed: savedObjective?.completed === true,
                 };
             }
         );

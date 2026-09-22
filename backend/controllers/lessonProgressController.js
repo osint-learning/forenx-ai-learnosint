@@ -1,3 +1,4 @@
+const User = require("../models/User");
 const asyncHandler = require("express-async-handler");
 
 const LessonProgress = require("../models/LessonProgress");
@@ -43,6 +44,11 @@ const completeLesson = asyncHandler(async (req, res) => {
       setDefaultsOnInsert: true,
     }
   );
+
+  // Synchronize User model completedLessons array
+  await User.findByIdAndUpdate(req.user._id, {
+    $addToSet: { completedLessons: req.params.lessonId },
+  });
 
   res.json({
     success: true,

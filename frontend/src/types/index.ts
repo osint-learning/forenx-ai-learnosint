@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // TOOL CATEGORY
 // ============================================================
 
@@ -396,6 +396,10 @@ export interface UserProfile {
   rankPosition: number;
   codename: string;
   accuracyRate: number;
+  profileImage?: string;
+  isVerified?: boolean;
+  completedLessons?: Array<{ _id?: string; title?: string; category?: string; lessonNumber?: number }>;
+  completedLabs?: Array<{ _id?: string; title?: string; tool?: string; category?: string; difficulty?: string; xpReward?: number }>;
 }
 
 // ============================================================

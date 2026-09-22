@@ -1,3 +1,34 @@
+
+const parseCommandTokens = (cmdStr) => {
+    const tokens = [];
+    let current = "";
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+
+    for (let i = 0; i < cmdStr.length; i++) {
+        const char = cmdStr[i];
+
+        if (char === "'" && !inDoubleQuote) {
+            inSingleQuote = !inSingleQuote;
+        } else if (char === '"' && !inSingleQuote) {
+            inDoubleQuote = !inDoubleQuote;
+        } else if (/\s/.test(char) && !inSingleQuote && !inDoubleQuote) {
+            if (current.length > 0) {
+                tokens.push(current);
+                current = "";
+            }
+        } else {
+            current += char;
+        }
+    }
+
+    if (current.length > 0) {
+        tokens.push(current);
+    }
+
+    return tokens;
+};
+
 ﻿const asyncHandler = require("express-async-handler");
 const mongoose = require("mongoose");
 const { getSecurityHeaders } = require("../services/recon/headerService");
@@ -137,10 +168,86 @@ const terminalCommand = asyncHandler(async (req, res) => {
         });
     }
 
-    const parts = command.trim().split(/\s+/);
-    const action = parts[0].toLowerCase();
-    const args = parts.slice(1);
+    const tokens = parseCommandTokens(command.trim());
+    if (tokens.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Command is required",
+        });
+    }
+    const action = tokens[0].toLowerCase();
+    const args = tokens.slice(1);
     const target = args.join(" ").trim();
+
+        // ----------------------------------------------------
+    // UTILITY COMMANDS: SYSINFO, HELP & CLEAR (ALLOWED IN EVERY LAB)
+    // ----------------------------------------------------
+    if (action === "sysinfo") {
+        const sysinfoText = `ForenX AI OSINT Practice Terminal\nEnvironment: ${practiceTool ? `${practiceTool.toUpperCase()} Practice Lab` : 'Independent Reconnaissance'}\nTarget: ${target || 'example.com'}\nType "help" to view available commands.`;
+        return res.json({
+            success: true,
+            command: "sysinfo",
+            target: "",
+            practiceTool: practiceTool || null,
+            labId: labId || null,
+            data: {
+                stdout: sysinfoText,
+                stderr: "",
+                rawOutput: sysinfoText,
+                exitCode: 0,
+                isHelp: true,
+            },
+            timestamp: new Date().toISOString(),
+        });
+    }
+
+    if (action === "help") {
+        let helpText = "";
+        if (practiceTool) {
+            const matchedKey = Object.keys(practiceToolRegistry).find(
+                (key) => key.toLowerCase() === practiceTool.trim().toLowerCase()
+            );
+            const toolConfig = matchedKey ? practiceToolRegistry[matchedKey] : null;
+            const regCmd = toolConfig ? toolConfig.command : practiceTool.toLowerCase();
+            helpText = `AVAILABLE COMMAND FOR THIS PRACTICE LAB:\n  ${regCmd} <target> [flags]\n\nUTILITY COMMANDS:\n  help      - Show available commands for this lab\n  clear     - Clear terminal output\n  sysinfo   - Show terminal environment information`;
+        } else {
+            helpText = `AVAILABLE COMMANDS:\nType "help" in the terminal for the full list of OSINT commands.\n\nUTILITY COMMANDS:\n  help      - Show available commands\n  clear     - Clear terminal output\n  sysinfo   - Show terminal environment information`;
+        }
+
+        return res.json({
+            success: true,
+            command: "help",
+            target: "",
+            practiceTool: practiceTool || null,
+            labId: labId || null,
+            data: {
+                stdout: helpText,
+                stderr: "",
+                rawOutput: helpText,
+                exitCode: 0,
+                isHelp: true,
+            },
+            timestamp: new Date().toISOString(),
+        });
+    }
+
+    if (action === "clear") {
+        return res.json({
+            success: true,
+            command: "clear",
+            target: "",
+            practiceTool: practiceTool || null,
+            labId: labId || null,
+            data: {
+                stdout: "",
+                stderr: "",
+                rawOutput: "",
+                exitCode: 0,
+                clear: true,
+            },
+            timestamp: new Date().toISOString(),
+        });
+    }
 
     const allowedCommands = [
         ...new Set(
@@ -213,6 +320,29 @@ const terminalCommand = asyncHandler(async (req, res) => {
         }
     }
 
+    
+    const isHelpFlag = args.some(a => a === "--help" || a === "-h" || a === "-help" || a === "help") ||
+        target === "--help" || target === "-h" || target === "help";
+
+    if (isHelpFlag && toolConfig.type !== "docker") {
+        const usageText = toolConfig.usage || `TOOL HELP: ${action}\nUsage: ${action} <target>\nDescription: Execute ${action} reconnaissance.`;
+        return res.json({
+            success: true,
+            command: action,
+            target: "",
+            practiceTool: practiceTool || null,
+            labId: labId || null,
+            data: {
+                stdout: usageText,
+                stderr: "",
+                rawOutput: usageText,
+                exitCode: 0,
+                isHelp: true,
+            },
+            timestamp: new Date().toISOString(),
+        });
+    }
+
     let data;
 
     // ----------------------------------------------------
@@ -280,10 +410,19 @@ const terminalCommand = asyncHandler(async (req, res) => {
     /*
      * PERSIST COMMAND OBJECTIVE
      *
-     * Only do this when labId is provided and valid.
-     * Normal Recon/Terminal usage is unaffected.
+     * Only do this when labId is provided, not a utility/help command,
+     * action strictly matches the lab's requiredCommand, and real successful output was received.
      */
-    if (labId && req.user?._id && mongoose.Types.ObjectId.isValid(labId)) {
+    const isUtilityOrHelp = action === "sysinfo" || action === "help" || action === "clear" ||
+        args.length === 0 || args.some(a => a === "--help" || a === "-h" || a === "help" || a === "-help" || a === "--info") ||
+        target === "--help" || target === "-h" || target === "help";
+
+    const hasSuccessfulOutput = data && !data.isHelp && !data.clear && (
+        (toolConfig.type === "docker" && data.exitCode === 0 && (data.stdout || data.rawOutput) && !data.error) ||
+        (toolConfig.type !== "docker" && !data.error)
+    );
+
+    if (labId && req.user?._id && mongoose.Types.ObjectId.isValid(labId) && !isUtilityOrHelp && hasSuccessfulOutput) {
         try {
             const Lab = require("../models/Lab");
             const LabProgress = require("../models/LabProgress");
@@ -294,6 +433,20 @@ const terminalCommand = asyncHandler(async (req, res) => {
             });
 
             if (lab) {
+                const labReqCmd = String(lab.requiredCommand || "").trim().toLowerCase();
+                // Strictly enforce that only the lab's requiredCommand completes Objective 1
+                if (labReqCmd && action !== labReqCmd) {
+                    // Do not persist progress if command doesn't match lab.requiredCommand
+                    return res.json({
+                        success: true,
+                        command: action,
+                        target,
+                        practiceTool: practiceTool || null,
+                        labId: labId || null,
+                        data,
+                        timestamp: new Date().toISOString(),
+                    });
+                }
                 const commandObjectiveIndex =
                     lab.objectives.findIndex(
                         objective => objective.type === "command"
