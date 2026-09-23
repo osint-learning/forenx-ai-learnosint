@@ -225,7 +225,96 @@ const getEvaluation = asyncHandler(async (req, res) => {
     });
 });
 
+
+// @desc    Generate and persist final investigation conclusion
+// @route   POST /api/investigations/:id/conclusion
+// @access  Private
+const createConclusion = asyncHandler(async (req, res) => {
+    const investigation = await getOwnedInvestigation(req.params.id, req.user._id);
+    if (!investigation) {
+        return res.status(404).json({ success: false, message: "Investigation not found or unauthorized" });
+    }
+
+    const conclusion = await aiService.generateFinalConclusion(investigation);
+    investigation.finalConclusion = conclusion;
+    investigation.status = "Completed";
+    investigation.progress = 100;
+    await investigation.save();
+
+    res.json({
+        success: true,
+        message: "Final conclusion generated and persisted successfully",
+        finalConclusion: investigation.finalConclusion,
+        status: investigation.status,
+        progress: investigation.progress,
+    });
+});
+
+// @desc    Get final conclusion
+// @route   GET /api/investigations/:id/conclusion
+// @access  Private
+const getConclusion = asyncHandler(async (req, res) => {
+    const investigation = await getOwnedInvestigation(req.params.id, req.user._id);
+    if (!investigation) {
+        return res.status(404).json({ success: false, message: "Investigation not found or unauthorized" });
+    }
+
+    res.json({
+        success: true,
+        finalConclusion: investigation.finalConclusion,
+    });
+});
+
+// @desc    Generate and persist final intelligence report
+// @route   POST /api/investigations/:id/report
+// @access  Private
+const createReport = asyncHandler(async (req, res) => {
+    const investigation = await getOwnedInvestigation(req.params.id, req.user._id);
+    if (!investigation) {
+        return res.status(404).json({ success: false, message: "Investigation not found or unauthorized" });
+    }
+
+    const report = await aiService.generateInvestigationReport(investigation);
+    investigation.report = report;
+    investigation.status = "Completed";
+    investigation.progress = 100;
+    await investigation.save();
+
+    res.json({
+        success: true,
+        message: "Intelligence report compiled and persisted successfully",
+        report: investigation.report,
+        status: investigation.status,
+        progress: investigation.progress,
+    });
+});
+
+// @desc    Get existing report
+// @route   GET /api/investigations/:id/report
+// @access  Private
+const getReport = asyncHandler(async (req, res) => {
+    const investigation = await getOwnedInvestigation(req.params.id, req.user._id);
+    if (!investigation) {
+        return res.status(404).json({ success: false, message: "Investigation not found or unauthorized" });
+    }
+
+    if (!investigation.report) {
+        const report = await aiService.generateInvestigationReport(investigation);
+        investigation.report = report;
+        await investigation.save();
+    }
+
+    res.json({
+        success: true,
+        report: investigation.report,
+    });
+});
+
 module.exports = {
+    createConclusion,
+    getConclusion,
+    createReport,
+    getReport,
     getToolSelection,
     analyzeOutput,
     mentorChat,

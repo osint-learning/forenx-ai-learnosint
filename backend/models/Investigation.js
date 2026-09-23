@@ -156,6 +156,72 @@ const evaluationSchema = new mongoose.Schema({
     },
 });
 
+const conclusionSchema = new mongoose.Schema({
+    summary: {
+        type: String,
+        required: true,
+    },
+    threatLevel: {
+        type: String,
+        default: "Medium",
+    },
+    keyTakeaways: {
+        type: [String],
+        default: [],
+    },
+    recommendations: {
+        type: [String],
+        default: [],
+    },
+    generatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+const reportSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+    },
+    executiveSummary: {
+        type: String,
+        required: true,
+    },
+    target: {
+        type: String,
+        required: true,
+    },
+    riskScore: {
+        type: Number,
+        default: 45,
+    },
+    threatLevel: {
+        type: String,
+        default: "Medium",
+    },
+    findingsCount: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+    },
+    keyFindings: {
+        type: [mongoose.Schema.Types.Mixed],
+        default: [],
+    },
+    studentEvaluation: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {},
+    },
+    recommendations: {
+        type: [String],
+        default: [],
+    },
+    generatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
 const investigationSchema = new mongoose.Schema(
     {
         user: {
@@ -178,8 +244,12 @@ const investigationSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            default: "Ready for Investigation",
+            default: "In Progress",
             trim: true,
+        },
+        progress: {
+            type: Number,
+            default: 20,
         },
         mission: {
             title: {
@@ -224,6 +294,14 @@ const investigationSchema = new mongoose.Schema(
                 feedback: "Investigation initiated. Begin by exploring DNS resolution and server headers.",
                 lastEvaluatedAt: new Date(),
             }),
+        },
+        finalConclusion: {
+            type: conclusionSchema,
+            default: null,
+        },
+        report: {
+            type: reportSchema,
+            default: null,
         },
     },
     {

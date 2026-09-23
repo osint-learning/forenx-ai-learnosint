@@ -5,6 +5,7 @@ const {
     getInvestigations,
     getInvestigationById,
     updateInvestigationObjectives,
+    deleteInvestigation
 } = require("../controllers/investigationController");
 const {
     getToolSelection,
@@ -16,6 +17,10 @@ const {
     getFindings,
     logStudentAction,
     getEvaluation,
+    createConclusion,
+    getConclusion,
+    createReport,
+    getReport
 } = require("../controllers/investigationAiController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -25,7 +30,8 @@ router.route("/")
     .get(protect, getInvestigations);
 
 router.route("/:id")
-    .get(protect, getInvestigationById);
+    .get(protect, getInvestigationById)
+    .delete(protect, deleteInvestigation);
 
 router.route("/:id/objectives")
     .patch(protect, updateInvestigationObjectives)
@@ -48,3 +54,9 @@ router.get("/:id/evaluation", protect, getEvaluation);
 router.post("/:id/evaluation/evaluate", protect, getEvaluation);
 
 module.exports = router;
+
+// Phase 9: Conclusion and Report endpoints
+router.post("/:id/conclusion", protect, createConclusion);
+router.get("/:id/conclusion", protect, getConclusion);
+router.post("/:id/report", protect, createReport);
+router.get("/:id/report", protect, getReport);

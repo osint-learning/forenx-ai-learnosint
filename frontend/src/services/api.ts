@@ -4,7 +4,8 @@ import type {
   AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab,
   InvestigationRecord, InvestigationObjective, InvestigationFinding, InvestigationAiHint,
   InvestigationToolRecommendation, InvestigationOutputAnalysis, InvestigationNextStep,
-  InvestigationAction, InvestigationEvaluation, InvestigationAiMessage
+  InvestigationAction, InvestigationEvaluation, InvestigationAiMessage,
+  InvestigationConclusion, InvestigationReportData
 } from '../types';
 import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
@@ -695,6 +696,51 @@ async resetLabProgress(
       headers: { Authorization: "Bearer " + token },
     });
     return response.data.evaluation;
+  },
+
+  async deleteInvestigation(id: string): Promise<boolean> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to delete investigation.");
+    const response = await apiClient.delete("/investigations/" + id, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.success;
+  },
+
+  async generateInvestigationConclusion(id: string): Promise<InvestigationConclusion> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to generate conclusion.");
+    const response = await apiClient.post("/investigations/" + id + "/conclusion", {}, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.finalConclusion;
+  },
+
+  async getInvestigationConclusion(id: string): Promise<InvestigationConclusion> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to get conclusion.");
+    const response = await apiClient.get("/investigations/" + id + "/conclusion", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.finalConclusion;
+  },
+
+  async generateInvestigationReport(id: string): Promise<InvestigationReportData> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to generate report.");
+    const response = await apiClient.post("/investigations/" + id + "/report", {}, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.report;
+  },
+
+  async getInvestigationReport(id: string): Promise<InvestigationReportData> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to get report.");
+    const response = await apiClient.get("/investigations/" + id + "/report", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.report;
   },
 
   async getThreatMarkers(): Promise<ThreatMarker[]> {

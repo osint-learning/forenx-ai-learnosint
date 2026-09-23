@@ -610,6 +610,49 @@ export interface InvestigationAiMessage {
   timestamp?: string;
 }
 
+export interface InvestigationConclusion {
+  _id?: string;
+  summary: string;
+  threatLevel: string;
+  keyTakeaways: string[];
+  recommendations: string[];
+  generatedAt?: string;
+}
+
+export interface InvestigationReportData {
+  _id?: string;
+  title: string;
+  executiveSummary: string;
+  target: string;
+  riskScore: number;
+  threatLevel: string;
+  findingsCount: {
+    total: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    info: number;
+  };
+  keyFindings: Array<{
+    title: string;
+    category: string;
+    severity: string;
+    description: string;
+    source: string;
+    correlationInfo?: string;
+  }>;
+  studentEvaluation: {
+    score: number;
+    grade: string;
+    methodology: string;
+    strengths: string[];
+    feedback: string;
+  };
+  recommendations: string[];
+  generatedAt?: string;
+}
+
 export interface InvestigationRecord {
   _id: string;
   user: string;
@@ -624,6 +667,9 @@ export interface InvestigationRecord {
   unlockedHints?: InvestigationAiHint[];
   studentActions?: InvestigationAction[];
   evaluation?: InvestigationEvaluation;
+  progress?: number;
+  finalConclusion?: InvestigationConclusion;
+  report?: InvestigationReportData;
   createdAt: string;
   updatedAt: string;
 }

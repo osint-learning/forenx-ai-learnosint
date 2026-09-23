@@ -15,7 +15,18 @@ const DEFAULT_OBJECTIVES = [
     { title: "Correlate important findings", completed: false },
 ];
 
-// Helper to ensure mission & objectives exist on legacy or partial records
+const calculateProgress = (item) => {
+    const objectives = item.objectives || [];
+    const completedObjs = objectives.filter(o => o.completed).length;
+    const totalObjs = objectives.length || 5;
+
+    const objPct = (completedObjs / totalObjs) * 50;
+    const findingsPct = Math.min(25, (item.findings?.length || 0) * 5);
+    const actionsPct = Math.min(25, (item.studentActions?.length || 0) * 5);
+
+    return Math.min(100, Math.max(20, Math.round(objPct + findingsPct + actionsPct)));
+};
+
 const formatInvestigationDoc = (doc) => {
     if (!doc) return doc;
     const item = doc.toObject ? doc.toObject() : { ...doc };
@@ -26,6 +37,11 @@ const formatInvestigationDoc = (doc) => {
 
     if (!Array.isArray(item.objectives) || item.objectives.length === 0) {
         item.objectives = DEFAULT_OBJECTIVES.map(obj => ({ ...obj }));
+    }
+
+    item.progress = calculateProgress(item);
+    if (item.progress === 100 && (!item.status || item.status === "In Progress" || item.status === "Ready for Investigation")) {
+        item.status = "Completed";
     }
 
     return item;
@@ -63,7 +79,8 @@ const createInvestigation = asyncHandler(async (req, res) => {
         target: targetDomain,
         domain: targetDomain,
         reconData,
-        status: status || "Ready for Investigation",
+        status: status || "In Progress",
+        progress: 20,
         mission: newMission,
         objectives: newObjectives,
     });
@@ -147,26 +164,20 @@ const updateInvestigationObjectives = asyncHandler(async (req, res) => {
         });
     }
 
-    // Ensure objectives array is initialized
     if (!Array.isArray(investigation.objectives) || investigation.objectives.length === 0) {
         investigation.objectives = DEFAULT_OBJECTIVES.map(obj => ({ ...obj }));
     }
 
     const { objectives, objectiveIndex, title, completed } = req.body;
 
-    // Case 1: Full objectives array passed
     if (Array.isArray(objectives)) {
         investigation.objectives = objectives.map((obj, idx) => ({
             title: (obj.title || (investigation.objectives[idx] && investigation.objectives[idx].title) || ("Objective " + (idx + 1))).trim(),
             completed: Boolean(obj.completed),
         }));
-    }
-    // Case 2: Update specific objective by index
-    else if (typeof objectiveIndex === "number" && objectiveIndex >= 0 && objectiveIndex < investigation.objectives.length) {
+    } else if (typeof objectiveIndex === "number" && objectiveIndex >= 0 && objectiveIndex < investigation.objectives.length) {
         investigation.objectives[objectiveIndex].completed = Boolean(completed);
-    }
-    // Case 3: Update specific objective by title
-    else if (title) {
+    } else if (title) {
         const found = investigation.objectives.find(
             obj => obj.title.toLowerCase().trim() === title.toLowerCase().trim()
         );
@@ -185,6 +196,11 @@ const updateInvestigationObjectives = asyncHandler(async (req, res) => {
         });
     }
 
+    investigation.progress = calculateProgress(investigation);
+    if (investigation.progress === 100) {
+        investigation.status = "Completed";
+    }
+
     await investigation.save();
 
     res.json({
@@ -194,9 +210,45 @@ const updateInvestigationObjectives = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Delete an investigation and all associated data
+// @route   DELETE /api/investigations/:id
+// @access  Private
+const deleteInvestigation = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid investigation ID",
+        });
+    }
+
+    const investigation = await Investigation.findOne({
+        _id: id,
+        user: req.user._id,
+    });
+
+    if (!investigation) {
+        return res.status(404).json({
+            success: false,
+            message: "Investigation not found or unauthorized",
+        });
+    }
+
+    await Investigation.deleteOne({ _id: id });
+
+    res.json({
+        success: true,
+        message: "Investigation and all collected Recon data deleted successfully",
+        deletedId: id,
+    });
+});
+
 module.exports = {
     createInvestigation,
     getInvestigations,
     getInvestigationById,
     updateInvestigationObjectives,
+    deleteInvestigation,
+    calculateProgress,
 };

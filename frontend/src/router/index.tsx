@@ -9,6 +9,7 @@ import { Learn } from "../pages/Learn";
 import { ToolExplorer } from "../pages/ToolExplorer";
 import { PracticeLabs } from "../pages/PracticeLabs";
 import { ReconEngine } from "../pages/ReconEngine";
+import { InvestigationsList } from "../pages/InvestigationsList";
 import { InvestigationWorkspace } from "../pages/InvestigationWorkspace";
 import { ThreatIntelligence } from "../pages/ThreatIntelligence";
 import { Reports } from "../pages/Reports";
@@ -104,6 +105,15 @@ export const AppRouter: React.FC = () => {
 
       <Route
         path="/investigations"
+        element={
+          <ProtectedRoute>
+            {user?.role === "admin" ? <Navigate to="/admin" replace /> : <InvestigationsList />}
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/investigations/:id"
         element={
           <ProtectedRoute>
             {user?.role === "admin" ? <Navigate to="/admin" replace /> : <InvestigationWorkspace />}

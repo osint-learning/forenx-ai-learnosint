@@ -582,7 +582,115 @@ function evaluateStudentProgress(investigation) {
     };
 }
 
+
+// 8. Generate Final Investigation Conclusion
+async function generateFinalConclusion(investigation) {
+    const summary = extractReconSummary(investigation.reconData, investigation.target);
+    const target = summary.target;
+    const findings = investigation.findings || [];
+    const evaluation = investigation.evaluation || {};
+
+    const prompt = "You are ForenX AI, Senior Cyber Threat Intelligence Lead.\n" +
+        "Synthesize the FINAL INVESTIGATION CONCLUSION for target: \"" + target + "\"\n\n" +
+        "REAL RECON CONTEXT:\n" +
+        JSON.stringify(summary, null, 2) + "\n\n" +
+        "CORRELATED FINDINGS (" + findings.length + "):\n" +
+        JSON.stringify(findings.map(f => ({ title: f.title, severity: f.severity, category: f.category, desc: f.description })), null, 2) + "\n\n" +
+        "STUDENT EVALUATION:\n" +
+        JSON.stringify(evaluation, null, 2) + "\n\n" +
+        "Generate a comprehensive executive conclusion in JSON:\n" +
+        JSON.stringify({
+            summary: "Executive final conclusion summarizing overall surface exposure and infrastructure",
+            threatLevel: "Critical / High / Medium / Low",
+            keyTakeaways: ["takeaway 1", "takeaway 2", "takeaway 3"],
+            recommendations: ["recommendation 1", "recommendation 2", "recommendation 3"]
+        }, null, 2);
+
+    const aiRes = await askOllama(prompt, null, { format: 'json', temperature: 0.1 });
+    if (aiRes.success) {
+        try {
+            const parsed = JSON.parse(aiRes.response);
+            if (parsed.summary && Array.isArray(parsed.keyTakeaways)) {
+                return {
+                    summary: parsed.summary,
+                    threatLevel: parsed.threatLevel || 'Medium',
+                    keyTakeaways: parsed.keyTakeaways,
+                    recommendations: parsed.recommendations || [],
+                    generatedAt: new Date(),
+                };
+            }
+        } catch (e) {}
+    }
+
+    const missingHeaders = [];
+    if (!summary.headers.strictTransportSecurity) missingHeaders.push('HSTS');
+    if (!summary.headers.contentSecurityPolicy) missingHeaders.push('CSP');
+
+    return {
+        summary: 'Investigation on ' + target + ' successfully concluded. Target resolves to ' + summary.domain.ip + ' with active server software ' + summary.headers.server + ' and valid TLS certificate issued by ' + summary.ssl.issuer + '. ' + (findings.length > 0 ? 'A total of ' + findings.length + ' correlated findings were mapped across DNS, Web Application, and Information Disclosure vectors.' : 'Reconnaissance baseline mapped across infrastructure and web surface.'),
+        threatLevel: missingHeaders.length > 0 || summary.robots.disallowCount > 5 ? 'Medium' : 'Low',
+        keyTakeaways: [
+            'Infrastructure: Primary A-Record routed to ' + summary.domain.ip + ' with ' + summary.domain.ns.length + ' authoritative nameservers.',
+            'Encryption: Active TLS encryption (' + summary.ssl.protocol + ') verified under certificate authority ' + summary.ssl.issuer + '.',
+            'Defense Posture: HTTP Security Grade ' + summary.headers.score + ' with ' + (missingHeaders.length > 0 ? 'missing ' + missingHeaders.join(' and ') : 'standard headers enforced') + '.',
+            'Surface Exposure: ' + summary.robots.disallowCount + ' crawl rules in robots.txt and ' + summary.technology.length + ' detected tech stack components.'
+        ],
+        recommendations: [
+            'Enforce HTTP Strict Transport Security (HSTS) and Content Security Policy (CSP) headers.',
+            'Review disallowed robots.txt paths to verify administrative panels are shielded behind SSO/MFA.',
+            'Monitor Certificate Transparency logs for unexpected subdomain issuance.'
+        ],
+        generatedAt: new Date()
+    };
+}
+
+// 9. Generate Complete Investigation Intelligence Report
+async function generateInvestigationReport(investigation) {
+    const summary = extractReconSummary(investigation.reconData, investigation.target);
+    const target = summary.target;
+    const findings = investigation.findings || [];
+    const evaluation = investigation.evaluation || {};
+    const conclusion = investigation.finalConclusion || await generateFinalConclusion(investigation);
+
+    const findingsCount = {
+        total: findings.length,
+        critical: findings.filter(f => f.severity === 'Critical').length,
+        high: findings.filter(f => f.severity === 'High').length,
+        medium: findings.filter(f => f.severity === 'Medium').length,
+        low: findings.filter(f => f.severity === 'Low').length,
+        info: findings.filter(f => f.severity === 'Info').length,
+    };
+
+    return {
+        title: 'ForenX AI OSINT Investigation Report — ' + target,
+        executiveSummary: conclusion.summary,
+        target: target,
+        riskScore: evaluation.score ? Math.round(100 - evaluation.score * 0.4) : 45,
+        threatLevel: conclusion.threatLevel,
+        findingsCount,
+        keyFindings: findings.map(f => ({
+            title: f.title,
+            category: f.category,
+            severity: f.severity,
+            description: f.description,
+            source: f.source,
+            correlationInfo: f.correlationInfo
+        })),
+        studentEvaluation: {
+            score: evaluation.score || 20,
+            grade: evaluation.grade || 'In Progress',
+            methodology: evaluation.methodology || 'NIST / OSINT Reconnaissance Framework',
+            strengths: evaluation.strengths || [],
+            feedback: evaluation.feedback || ''
+        },
+        recommendations: conclusion.recommendations,
+        generatedAt: new Date()
+    };
+}
+
 module.exports = {
+    generateFinalConclusion,
+    generateInvestigationReport,
     extractReconSummary,
     recommendTools,
     analyzeReconSection,
