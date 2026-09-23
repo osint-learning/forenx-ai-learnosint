@@ -29,7 +29,10 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { OsintService } from '../services/api';
-import type { EvidenceNode, EvidenceConnection, InvestigationRecord, InvestigationObjective } from '../types';
+import type { EvidenceNode, EvidenceConnection, InvestigationRecord, InvestigationObjective, InvestigationFinding } from '../types';
+import { AiInvestigationPanel } from '../components/investigations/AiInvestigationPanel';
+import { FindingsCorrelationPanel } from '../components/investigations/FindingsCorrelationPanel';
+import { StudentEvaluationPanel } from '../components/investigations/StudentEvaluationPanel';
 
 const buildEvidenceFromRecon = (target: string, reconData: any): { nodes: EvidenceNode[]; connections: EvidenceConnection[] } => {
   const nodes: EvidenceNode[] = [];
@@ -302,6 +305,59 @@ export const InvestigationWorkspace: React.FC = () => {
       console.error('Failed to update objective on server:', err);
     } finally {
       setIsUpdatingObjectives(false);
+    }
+  };
+
+  
+  const handlePinFindingToGraph = (finding: InvestigationFinding) => {
+    if (!selectedInvestigation) return;
+    const newNodeId = `finding-${Date.now()}`;
+    const newNode: EvidenceNode = {
+      id: newNodeId,
+      label: finding.title,
+      type: 'Document',
+      status: 'Confirmed',
+      notes: `${finding.category} [${finding.severity}]: ${finding.description}`,
+      x: 350 + Math.random() * 150,
+      y: 200 + Math.random() * 100,
+    };
+
+    setNodes(prev => [...prev, newNode]);
+    if (nodes.length > 0) {
+      setConnections(prev => [
+        ...prev,
+        {
+          fromId: nodes[0].id,
+          toId: newNode.id,
+          label: 'Correlated Finding',
+          confidence: 95,
+        },
+      ]);
+    }
+  };
+
+  const handleActionLogged = async (actionType: string, description: string, targetItem?: string) => {
+    if (!selectedInvestigation) return;
+    try {
+      const res = await OsintService.logInvestigationAction(
+        selectedInvestigation._id,
+        actionType,
+        description,
+        targetItem
+      );
+      if (res) {
+        const updated = {
+          ...selectedInvestigation,
+          studentActions: res.studentActions,
+          evaluation: res.evaluation,
+        };
+        setSelectedInvestigation(updated);
+        setInvestigations(prev =>
+          prev.map(inv => (inv._id === updated._id ? updated : inv))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to log action:', err);
     }
   };
 
@@ -609,6 +665,42 @@ export const InvestigationWorkspace: React.FC = () => {
                 </div>
               </div>
             </GlassCard>
+          )}
+
+
+          
+          {/* 2. PHASE 5: AI-ASSISTED INVESTIGATION PANEL */}
+          {selectedInvestigation && (
+            <AiInvestigationPanel
+              investigation={selectedInvestigation}
+              onActionLogged={handleActionLogged}
+            />
+          )}
+
+          {/* 3. PHASE 6: FINDINGS & MULTI-SOURCE CORRELATION PANEL */}
+          {selectedInvestigation && (
+            <FindingsCorrelationPanel
+              investigation={selectedInvestigation}
+              onPinFindingToGraph={handlePinFindingToGraph}
+              onActionLogged={handleActionLogged}
+              onFindingsUpdated={newFindings => {
+                if (selectedInvestigation) {
+                  const updated = { ...selectedInvestigation, findings: newFindings };
+                  setSelectedInvestigation(updated);
+                  setInvestigations(prev =>
+                    prev.map(inv => (inv._id === updated._id ? updated : inv))
+                  );
+                }
+              }}
+            />
+          )}
+
+          {/* 4. PHASE 7: STUDENT EVALUATION & FEEDBACK PANEL */}
+          {selectedInvestigation && (
+            <StudentEvaluationPanel
+              investigation={selectedInvestigation}
+              onActionLogged={handleActionLogged}
+            />
           )}
 
 

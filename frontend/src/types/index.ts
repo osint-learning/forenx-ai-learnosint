@@ -538,6 +538,78 @@ export interface InvestigationMission {
   description: string;
 }
 
+export interface InvestigationFinding {
+  _id?: string;
+  title: string;
+  category: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Info';
+  description: string;
+  source: string;
+  relatedEvidence: string[];
+  correlationInfo: string;
+  status: string;
+  createdAt?: string;
+}
+
+export interface InvestigationAiHint {
+  _id?: string;
+  level: number;
+  hint: string;
+  guidance: string;
+  nextStep: string;
+  unlockedAt?: string;
+}
+
+export interface InvestigationToolRecommendation {
+  toolName: string;
+  category: string;
+  command: string;
+  rationale: string;
+  priority: string;
+}
+
+export interface InvestigationOutputAnalysis {
+  section: string;
+  title: string;
+  summary: string;
+  technicalDetails: string[];
+  securityImplication: string;
+  recommendedAction: string;
+}
+
+export interface InvestigationNextStep {
+  stepTitle: string;
+  rationale: string;
+  suggestedAction: string;
+  priority: string;
+  progress: string;
+}
+
+export interface InvestigationAction {
+  _id?: string;
+  actionType: string;
+  description: string;
+  targetItem?: string;
+  timestamp?: string;
+}
+
+export interface InvestigationEvaluation {
+  score: number;
+  grade: string;
+  methodology: string;
+  strengths: string[];
+  improvements: string[];
+  feedback: string;
+  lastEvaluatedAt?: string;
+}
+
+export interface InvestigationAiMessage {
+  _id?: string;
+  role: 'user' | 'assistant';
+  message: string;
+  timestamp?: string;
+}
+
 export interface InvestigationRecord {
   _id: string;
   user: string;
@@ -547,6 +619,11 @@ export interface InvestigationRecord {
   status: string;
   mission?: InvestigationMission;
   objectives?: InvestigationObjective[];
+  findings?: InvestigationFinding[];
+  aiChatHistory?: InvestigationAiMessage[];
+  unlockedHints?: InvestigationAiHint[];
+  studentActions?: InvestigationAction[];
+  evaluation?: InvestigationEvaluation;
   createdAt: string;
   updatedAt: string;
 }

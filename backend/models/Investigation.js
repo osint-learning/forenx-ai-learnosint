@@ -25,6 +25,137 @@ const objectiveSchema = new mongoose.Schema({
     },
 });
 
+const findingSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    category: {
+        type: String,
+        default: "General",
+        trim: true,
+    },
+    severity: {
+        type: String,
+        enum: ["Critical", "High", "Medium", "Low", "Info"],
+        default: "Medium",
+    },
+    description: {
+        type: String,
+        required: true,
+    },
+    source: {
+        type: String,
+        default: "Reconnaissance Analysis",
+    },
+    relatedEvidence: {
+        type: [String],
+        default: [],
+    },
+    correlationInfo: {
+        type: String,
+        default: "",
+    },
+    status: {
+        type: String,
+        default: "Correlated",
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+const aiMessageSchema = new mongoose.Schema({
+    role: {
+        type: String,
+        enum: ["user", "assistant"],
+        required: true,
+    },
+    message: {
+        type: String,
+        required: true,
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+const hintSchema = new mongoose.Schema({
+    level: {
+        type: Number,
+        required: true,
+    },
+    hint: {
+        type: String,
+        required: true,
+    },
+    guidance: {
+        type: String,
+        default: "",
+    },
+    nextStep: {
+        type: String,
+        default: "",
+    },
+    unlockedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+const studentActionSchema = new mongoose.Schema({
+    actionType: {
+        type: String,
+        required: true,
+    },
+    description: {
+        type: String,
+        required: true,
+    },
+    targetItem: {
+        type: String,
+        default: "",
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
+const evaluationSchema = new mongoose.Schema({
+    score: {
+        type: Number,
+        default: 0,
+    },
+    grade: {
+        type: String,
+        default: "Pending Evaluation",
+    },
+    methodology: {
+        type: String,
+        default: "Standard OSINT Reconnaissance Framework",
+    },
+    strengths: {
+        type: [String],
+        default: [],
+    },
+    improvements: {
+        type: [String],
+        default: [],
+    },
+    feedback: {
+        type: String,
+        default: "",
+    },
+    lastEvaluatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+});
+
 const investigationSchema = new mongoose.Schema(
     {
         user: {
@@ -65,6 +196,34 @@ const investigationSchema = new mongoose.Schema(
         objectives: {
             type: [objectiveSchema],
             default: () => DEFAULT_OBJECTIVES.map(obj => ({ ...obj })),
+        },
+        findings: {
+            type: [findingSchema],
+            default: [],
+        },
+        aiChatHistory: {
+            type: [aiMessageSchema],
+            default: [],
+        },
+        unlockedHints: {
+            type: [hintSchema],
+            default: [],
+        },
+        studentActions: {
+            type: [studentActionSchema],
+            default: [],
+        },
+        evaluation: {
+            type: evaluationSchema,
+            default: () => ({
+                score: 20,
+                grade: "In Progress",
+                methodology: "Standard OSINT Reconnaissance Framework",
+                strengths: ["Initial Reconnaissance ingestion completed"],
+                improvements: ["Proceed through objective milestones and examine DNS/tech findings"],
+                feedback: "Investigation initiated. Begin by exploring DNS resolution and server headers.",
+                lastEvaluatedAt: new Date(),
+            }),
         },
     },
     {

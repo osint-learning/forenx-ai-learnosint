@@ -1,5 +1,11 @@
 ﻿import axios from 'axios';
-import type {  OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport , AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab, InvestigationRecord, InvestigationObjective } from '../types';
+import type {
+  OsintTool, LearningCapsule, PracticeLab, ReconResult, ThreatMarker, IntelligenceReport,
+  AdminOverview, AdminAnalytics, AdminStudent, AdminLesson, AdminQuiz, AdminLab,
+  InvestigationRecord, InvestigationObjective, InvestigationFinding, InvestigationAiHint,
+  InvestigationToolRecommendation, InvestigationOutputAnalysis, InvestigationNextStep,
+  InvestigationAction, InvestigationEvaluation, InvestigationAiMessage
+} from '../types';
 import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
 const API_BASE_URL =
@@ -608,6 +614,87 @@ async resetLabProgress(
         "Failed to update investigation objectives."
       );
     }
+  },
+
+  async getInvestigationToolRecommendations(id: string): Promise<InvestigationToolRecommendation[]> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to request tool recommendations.");
+    const response = await apiClient.post("/investigations/" + id + "/ai/recommend-tools", {}, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.recommendations || [];
+  },
+
+  async analyzeInvestigationReconSection(id: string, section: string, query?: string): Promise<InvestigationOutputAnalysis> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to analyze recon output.");
+    const response = await apiClient.post("/investigations/" + id + "/ai/analyze-output", { section, query }, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.analysis;
+  },
+
+  async askInvestigationMentor(id: string, message: string): Promise<{ reply: string; chatHistory: InvestigationAiMessage[] }> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to consult the AI Investigation Mentor.");
+    const response = await apiClient.post("/investigations/" + id + "/ai/mentor", { message }, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data;
+  },
+
+  async getInvestigationHint(id: string, level: number = 1): Promise<{ hint: InvestigationAiHint; unlockedHints: InvestigationAiHint[] }> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to unlock hints.");
+    const response = await apiClient.post("/investigations/" + id + "/ai/hint", { level }, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data;
+  },
+
+  async getInvestigationNextStep(id: string): Promise<InvestigationNextStep> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to request next-step recommendations.");
+    const response = await apiClient.post("/investigations/" + id + "/ai/next-step", {}, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.nextStep;
+  },
+
+  async correlateInvestigationFindings(id: string): Promise<{ findings: InvestigationFinding[]; evaluation: InvestigationEvaluation }> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to correlate findings.");
+    const response = await apiClient.post("/investigations/" + id + "/findings/correlate", {}, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data;
+  },
+
+  async getInvestigationFindings(id: string): Promise<InvestigationFinding[]> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to view findings.");
+    const response = await apiClient.get("/investigations/" + id + "/findings", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.findings || [];
+  },
+
+  async logInvestigationAction(id: string, actionType: string, description: string, targetItem?: string): Promise<{ studentActions: InvestigationAction[]; evaluation: InvestigationEvaluation }> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to log actions.");
+    const response = await apiClient.post("/investigations/" + id + "/actions/log", { actionType, description, targetItem }, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data;
+  },
+
+  async getInvestigationEvaluation(id: string): Promise<InvestigationEvaluation> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to view evaluation.");
+    const response = await apiClient.get("/investigations/" + id + "/evaluation", {
+      headers: { Authorization: "Bearer " + token },
+    });
+    return response.data.evaluation;
   },
 
   async getThreatMarkers(): Promise<ThreatMarker[]> {
