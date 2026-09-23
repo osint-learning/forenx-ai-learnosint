@@ -23,10 +23,13 @@ import {
   FileCode,
   FileText,
   ShieldCheck,
-  Tag
+  Tag,
+  Target,
+  Check,
+  ListTodo,
 } from 'lucide-react';
 import { OsintService } from '../services/api';
-import type { EvidenceNode, EvidenceConnection, InvestigationRecord } from '../types';
+import type { EvidenceNode, EvidenceConnection, InvestigationRecord, InvestigationObjective } from '../types';
 
 const buildEvidenceFromRecon = (target: string, reconData: any): { nodes: EvidenceNode[]; connections: EvidenceConnection[] } => {
   const nodes: EvidenceNode[] = [];
@@ -159,6 +162,15 @@ const buildEvidenceFromRecon = (target: string, reconData: any): { nodes: Eviden
   return { nodes, connections };
 };
 
+
+const DEFAULT_OBJECTIVES: InvestigationObjective[] = [
+  { title: 'Analyze domain information', completed: false },
+  { title: 'Examine DNS records', completed: false },
+  { title: 'Identify technologies', completed: false },
+  { title: 'Examine exposed services', completed: false },
+  { title: 'Correlate important findings', completed: false },
+];
+
 export const InvestigationWorkspace: React.FC = () => {
   const navigate = useNavigate();
 
@@ -248,6 +260,49 @@ export const InvestigationWorkspace: React.FC = () => {
     }
 
     setNewLabel('');
+  };
+
+  
+  const [isUpdatingObjectives, setIsUpdatingObjectives] = useState(false);
+
+  const handleToggleObjective = async (index: number) => {
+    if (!selectedInvestigation) return;
+
+    const baseObjectives = (selectedInvestigation.objectives && selectedInvestigation.objectives.length > 0)
+      ? selectedInvestigation.objectives
+      : DEFAULT_OBJECTIVES;
+
+    const updatedObjectives: InvestigationObjective[] = baseObjectives.map((obj, idx) =>
+      idx === index ? { ...obj, completed: !obj.completed } : { ...obj }
+    );
+
+    const updatedInvestigation: InvestigationRecord = {
+      ...selectedInvestigation,
+      objectives: updatedObjectives,
+    };
+
+    setSelectedInvestigation(updatedInvestigation);
+    setInvestigations(prev =>
+      prev.map(inv => (inv._id === updatedInvestigation._id ? updatedInvestigation : inv))
+    );
+
+    try {
+      setIsUpdatingObjectives(true);
+      const saved = await OsintService.updateInvestigationObjectives(
+        selectedInvestigation._id,
+        updatedObjectives
+      );
+      if (saved) {
+        setSelectedInvestigation(prev => (prev?._id === saved._id ? saved : prev));
+        setInvestigations(prev =>
+          prev.map(inv => (inv._id === saved._id ? saved : inv))
+        );
+      }
+    } catch (err: any) {
+      console.error('Failed to update objective on server:', err);
+    } finally {
+      setIsUpdatingObjectives(false);
+    }
   };
 
   const recon = selectedInvestigation?.reconData || {};
@@ -428,6 +483,134 @@ export const InvestigationWorkspace: React.FC = () => {
               );
             })}
           </div>
+
+          
+          {/* 1. INVESTIGATION MISSION & OBJECTIVES */}
+          {selectedInvestigation && (
+            <GlassCard glow="cyan" className="p-6 border border-[#00ff99]/30 relative overflow-hidden">
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                {/* Left Column: Target & Mission */}
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Target size={20} className="text-[#00ff99]" />
+                      <span className="text-xs font-mono uppercase tracking-widest text-[#00ff99] font-bold">
+                        Investigation Mission
+                      </span>
+                    </div>
+                    {isUpdatingObjectives && (
+                      <span className="text-[11px] font-mono text-cyan-400 animate-pulse flex items-center gap-1 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/30">
+                        <Loader2 size={11} className="animate-spin" /> Saving Progress...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="bg-black/60 border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono text-slate-400">Target:</span>
+                      <span className="text-sm font-mono font-bold text-white bg-[#00ff99]/10 text-[#00ff99] px-3 py-1 rounded-lg border border-[#00ff99]/30 flex items-center gap-2">
+                        <Globe size={14} className="text-[#00ff99]" />
+                        {selectedInvestigation.target || selectedInvestigation.domain}
+                      </span>
+                      <Badge variant="purple" className="text-[10px]">
+                        ACTIVE RECON CONTEXT
+                      </Badge>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/5 space-y-1">
+                      <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                        {selectedInvestigation.mission?.title || 'Reconnaissance Investigation'}
+                      </h3>
+                      <p className="text-xs text-slate-300 font-mono leading-relaxed italic bg-white/5 p-3 rounded-lg border border-white/5">
+                        "{selectedInvestigation.mission?.description || 'Analyze the reconnaissance results and identify important security-relevant findings.'}"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Objectives Checklist */}
+                <div className="flex-1 space-y-3">
+                  {(() => {
+                    const currentObjs = (selectedInvestigation.objectives && selectedInvestigation.objectives.length > 0)
+                      ? selectedInvestigation.objectives
+                      : DEFAULT_OBJECTIVES;
+                    const completedCount = currentObjs.filter(o => o.completed).length;
+                    const totalCount = currentObjs.length;
+                    const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+                    const isAllDone = totalCount > 0 && completedCount === totalCount;
+
+                    return (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 font-mono text-xs text-white">
+                            <ListTodo size={16} className="text-[#00ff99]" />
+                            <span className="font-bold uppercase tracking-wider">Investigation Objectives</span>
+                          </div>
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <span className="text-slate-400">
+                              {completedCount}/{totalCount} Completed
+                            </span>
+                            <Badge variant={isAllDone ? 'emerald' : 'cyan'}>
+                              {pct}%
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full bg-black/60 border border-white/10 rounded-full h-2 overflow-hidden p-0.5">
+                          <div
+                            className="bg-gradient-to-r from-cyan-500 to-[#00ff99] h-full rounded-full transition-all duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+
+                        {/* Objectives List */}
+                        <div className="space-y-2 pt-1">
+                          {currentObjs.map((obj, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleToggleObjective(idx)}
+                              className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all duration-200 cursor-pointer font-mono text-xs ${
+                                obj.completed
+                                  ? 'bg-[#00ff99]/10 border-[#00ff99]/60 text-white shadow-[0_0_12px_rgba(0,255,153,0.12)]'
+                                  : 'bg-black/50 border-white/10 text-slate-300 hover:border-[#00ff99]/40 hover:bg-white/5'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                                    obj.completed
+                                      ? 'bg-[#00ff99] border-[#00ff99] text-black shadow-[0_0_8px_#00ff99]'
+                                      : 'border-slate-500 bg-black/60 text-transparent'
+                                  }`}
+                                >
+                                  <Check size={13} className={obj.completed ? 'stroke-[3]' : 'opacity-0'} />
+                                </div>
+                                <span className={obj.completed ? 'line-through text-slate-400' : 'text-slate-200 font-medium'}>
+                                  {obj.title}
+                                </span>
+                              </div>
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                                  obj.completed
+                                    ? 'bg-[#00ff99]/20 text-[#00ff99] border border-[#00ff99]/40'
+                                    : 'bg-slate-800/80 text-slate-400 border border-slate-700'
+                                }`}
+                              >
+                                {obj.completed ? 'Completed' : 'Pending'}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </GlassCard>
+          )}
+
 
           {/* Detective Wall Canvas */}
           {selectedInvestigation && (

@@ -527,6 +527,17 @@ export interface AdminLab {
   createdAt?: string;
 }
 
+export interface InvestigationObjective {
+  _id?: string;
+  title: string;
+  completed: boolean;
+}
+
+export interface InvestigationMission {
+  title: string;
+  description: string;
+}
+
 export interface InvestigationRecord {
   _id: string;
   user: string;
@@ -534,6 +545,8 @@ export interface InvestigationRecord {
   domain?: string;
   reconData: any;
   status: string;
+  mission?: InvestigationMission;
+  objectives?: InvestigationObjective[];
   createdAt: string;
   updatedAt: string;
 }
