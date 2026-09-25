@@ -5,7 +5,11 @@ import type {
   InvestigationRecord, InvestigationObjective, InvestigationFinding, InvestigationAiHint,
   InvestigationToolRecommendation, InvestigationOutputAnalysis, InvestigationNextStep,
   InvestigationAction, InvestigationEvaluation, InvestigationAiMessage,
-  InvestigationConclusion, InvestigationReportData
+  InvestigationConclusion, InvestigationReportData,
+  AiToolRecommendationResponse, AiCommandSuggestionResponse,
+  PersonalizedLearningResponse, AiQuizGenerationResponse,
+  AiQuizEvaluationResponse, AiLabEvaluationResponse,
+  AiLabHintResponse, AiMentorTestResponse
 } from '../types';
 import { INITIAL_CAPSULES, INITIAL_THREAT_MARKERS } from '../constants';
 import { mapTool } from "../utils/toolMapper";
@@ -379,6 +383,37 @@ async getPracticeLabs(): Promise<PracticeLab[]> {
 
     throw error;
   }
+},
+
+async completeLabCommandObjective(
+  labId: string,
+  command: string,
+  output?: any
+): Promise<any> {
+  const token =
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error(
+      "Please login before updating lab progress."
+    );
+  }
+
+  const response = await apiClient.post(
+    `/labs/${labId}/complete-command`,
+    {
+      command,
+      output,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return response.data;
 },
 
 async evaluateLabAnswer(
@@ -801,5 +836,105 @@ async executeTerminalCommand(
         'Rotate exposed SSL certificate keys prior to expiry in 142 days'
       ]
     };
-  }
+  },
+
+  // ============================================================
+  // PHASE 10 AI INTEGRATION APIS
+  // ============================================================
+
+  async askGlobalMentor(prompt: string): Promise<AiMentorTestResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to communicate with ForenX AI.");
+    const response = await apiClient.post("/ai/test", { prompt }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async recommendTools(objective: string): Promise<AiToolRecommendationResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to request tool recommendations.");
+    const response = await apiClient.post("/ai/recommend-tools", { objective }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async suggestCommand(tool: string, objective: string): Promise<AiCommandSuggestionResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to request command suggestions.");
+    const response = await apiClient.post("/ai/suggest-command", { tool, objective }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async getPersonalizedLearning(focus?: string): Promise<PersonalizedLearningResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to receive personalized learning recommendations.");
+    const response = await apiClient.post("/ai/personalized-learning", { focus: focus || "" }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async generateAIQuiz(tool: string, difficulty: string = "Beginner", count: number = 5): Promise<AiQuizGenerationResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to generate AI quizzes.");
+    const response = await apiClient.post("/ai/generate-quiz", {
+      tool,
+      difficulty,
+      numberOfQuestions: count
+    }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async evaluateAIQuiz(tool: string, questions: any[], answers: any[]): Promise<AiQuizEvaluationResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to evaluate AI quiz.");
+    const response = await apiClient.post("/ai/evaluate-quiz", {
+      tool,
+      questions,
+      answers
+    }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async evaluateAILab(labId: string, commandHistory?: string[], objectiveResults?: any[]): Promise<AiLabEvaluationResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to evaluate lab with AI.");
+    const response = await apiClient.post("/ai/evaluate-lab", {
+      labId,
+      commandHistory: commandHistory || [],
+      objectiveResults: objectiveResults || []
+    }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  async getAILabHint(labId: string, objectiveIndex: number, attempt: number = 1): Promise<AiLabHintResponse> {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (!token) throw new Error("Please login to request AI investigation hint.");
+    const response = await apiClient.post("/ai/investigation-hint", {
+      labId,
+      objectiveIndex,
+      attempt
+    }, {
+      headers: { Authorization: "Bearer " + token },
+      timeout: 120000,
+    });
+    return response.data;
+  },
 };

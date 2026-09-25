@@ -16,3 +16,7 @@ __pycache__/
 
 # Unsloth compiled cache
 ai-service/unsloth_compiled_cache/
+
+# Local development startup configuration
+/package.json
+/scripts/

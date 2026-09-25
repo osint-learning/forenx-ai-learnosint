@@ -673,3 +673,170 @@ export interface InvestigationRecord {
   createdAt: string;
   updatedAt: string;
 }
+// ============================================================
+// PHASE 10 AI ENGINE TYPES
+// ============================================================
+
+export interface AiToolRecommendationItem {
+  name: string;
+  category: string;
+  reason: string;
+  command?: string;
+}
+
+export interface AiToolRecommendationResponse {
+  success: boolean;
+  objective: string;
+  recommendations: AiToolRecommendationItem[];
+  detectedIntent?: string;
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface AiCommandSuggestionResponse {
+  success: boolean;
+  tool: string;
+  objective: string;
+  suggestion: {
+    command: string;
+    explanation: string;
+    purpose: string;
+  };
+  allowedCommandsCount?: number;
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface PersonalizedLearningItem {
+  tool: string;
+  reason: string;
+  difficulty?: 'Beginner' | 'Intermediate' | 'Advanced' | string;
+}
+
+export interface PersonalizedLearningResponse {
+  success: boolean;
+
+  studentProfile?: {
+    level: number;
+    currentXp: number;
+    nextLevelXp: number;
+    streakDays: number;
+    completedLabsCount: number;
+    accuracyRate: number;
+  };
+
+  recommendation?: {
+    learningLevel: string;
+    learningFocus: string;
+    recommendations: PersonalizedLearningItem[];
+    learningOrder: string[];
+    nextAction: string;
+  };
+
+  availableToolCount?: number;
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface AiQuizQuestionItem {
+  id?: number | string;
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation: string;
+}
+
+export interface AiQuizGenerationResponse {
+  success: boolean;
+  tool: string;
+  difficulty: string;
+  count: number;
+  quiz: {
+    questions: AiQuizQuestionItem[];
+  };
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface AiQuizEvaluationResponse {
+  success: boolean;
+  tool: string;
+  score: {
+    totalQuestions: number;
+    correctAnswers: number;
+    percentage: number;
+    passed: boolean;
+  };
+  feedback: {
+    overallPerformance: string;
+    strengths: string[];
+    misconceptions: string[];
+    nextStudySteps: string[];
+    questionFeedback?: Array<{
+      questionIndex: number;
+      isCorrect: boolean;
+      feedback: string;
+    }>;
+  };
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface AiLabEvaluationResponse {
+  success: boolean;
+  lab: {
+    id: string;
+    title: string;
+    tool: string;
+    difficulty: string;
+    target: string;
+    totalObjectives: number;
+    completedObjectives: number;
+    percentage: number;
+  };
+  evaluation: {
+    performanceSummary: string;
+    strengths: string[];
+    areasForImprovement: string[];
+    detectedMistakes: string[];
+    nextSteps: string[];
+    objectiveFeedback?: Array<{
+      objectiveIndex: number;
+      completed: boolean;
+      feedback: string;
+    }>;
+  };
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface AiLabHintResponse {
+  success: boolean;
+  hint: {
+    labId: string;
+    labTitle: string;
+    tool: string;
+    objectiveIndex: number;
+    attempt: number;
+    hint: string;
+    guidance: string;
+    nextStep: string;
+  };
+  model?: string;
+  createdAt?: string;
+  message?: string;
+}
+
+export interface AiMentorTestResponse {
+  success: boolean;
+  model: string;
+  response: string;
+  createdAt: string;
+  message?: string;
+}

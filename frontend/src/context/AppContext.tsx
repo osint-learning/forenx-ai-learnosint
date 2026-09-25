@@ -456,170 +456,51 @@ export const AppProvider: React.FC<{
   // AI MENTOR
   // ==========================================================
 
-  const sendAiMessage = (
+  const sendAiMessage = async (
     userText: string
   ) => {
 
-    if (
-      !userText.trim()
-    ) {
+    if (!userText.trim()) {
       return;
     }
 
-
-    // --------------------------------------------------------
     // User message
-    // --------------------------------------------------------
-
     const userMsg: ChatMessage = {
-
-      sender:
-        'user',
-
-      text:
-        userText,
-
-      timestamp:
-        new Date().toLocaleTimeString(
-          [],
-          {
-            hour:
-              '2-digit',
-
-            minute:
-              '2-digit',
-          }
-        ),
+      sender: 'user',
+      text: userText,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     };
 
+    setAiMessages(prev => [...prev, userMsg]);
 
-    setAiMessages(
-      prev => [
-        ...prev,
-        userMsg,
-      ]
-    );
-
-
-    // --------------------------------------------------------
-    // AI response
-    // --------------------------------------------------------
-
-    setTimeout(
-      () => {
-
-        let aiReply =
-          'I have analyzed your query. To gather intelligence on this target, execute passive DNS enumeration first using an appropriate OSINT tool or query Shodan for host information.';
-
-
-        const lower =
-          userText.toLowerCase();
-
-
-        // WHOIS
-        if (
-          lower.includes(
-            'whois'
-          )
-        ) {
-
-          aiReply =
-            'WHOIS queries reveal domain registration information such as registrar details, creation dates, expiration dates, and name servers. Modern WHOIS services may redact personal registrant information.';
-
-        }
-
-
-        // SHODAN
-        else if (
-          lower.includes(
-            'shodan'
-          )
-        ) {
-
-          aiReply =
-            "Shodan indexes information about Internet-connected systems. Useful filters include `port:443`, `org:'Company Name'`, `asn:AS15169`, and `country:IN`.";
-
-        }
-
-
-        // LAB / HINT
-        else if (
-          lower.includes('lab') ||
-          lower.includes('hint') ||
-          lower.includes('phantom')
-        ) {
-
-          aiReply =
-            'For Operation Phantom Domain, inspect the available evidence and HTTP response headers. Correlate discovered subdomains with the target domain and identify the staging infrastructure.';
-
-        }
-
-
-        // EXIF / METADATA
-        else if (
-          lower.includes('exif') ||
-          lower.includes('metadata')
-        ) {
-
-          aiReply =
-            'Use ExifTool to inspect embedded metadata. For example, `exiftool filename.jpg` can reveal available camera, timestamp, author, and GPS metadata.';
-
-        }
-
-
-        // DNS
-        else if (
-          lower.includes('dns') ||
-          lower.includes('subdomain')
-        ) {
-
-          aiReply =
-            'Start with passive DNS and subdomain enumeration. Tools such as DNS Lookup, Subfinder, Amass, and theHarvester can help identify related infrastructure.';
-
-        }
-
-
-        // DEFAULT
-        else {
-
-          aiReply =
-            'For a structured OSINT investigation, begin with passive collection, identify the target infrastructure, correlate findings across multiple sources, validate important evidence, and document the investigation path.';
-        }
-
-
-        const aiMsg: ChatMessage = {
-
-          sender:
-            'ai',
-
-          text:
-            aiReply,
-
-          timestamp:
-            new Date().toLocaleTimeString(
-              [],
-              {
-                hour:
-                  '2-digit',
-
-                minute:
-                  '2-digit',
-              }
-            ),
-        };
-
-
-        setAiMessages(
-          prev => [
-            ...prev,
-            aiMsg,
-          ]
-        );
-
-      },
-
-      800
-    );
+    // Live backend AI call
+    try {
+      const result = await OsintService.askGlobalMentor(userText);
+      const aiReply = result?.response || "I have analyzed your request based on OSINT methodologies.";
+      const aiMsg: ChatMessage = {
+        sender: 'ai',
+        text: aiReply,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+      setAiMessages(prev => [...prev, aiMsg]);
+    } catch (error: any) {
+      console.error("Global AI Mentor Error:", error);
+      const errorMsg: ChatMessage = {
+        sender: 'ai',
+        text: error?.response?.data?.message || error?.message || "Failed to communicate with ForenX AI Mentor. Ensure Ollama is active.",
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      };
+      setAiMessages(prev => [...prev, errorMsg]);
+    }
   };
 
 

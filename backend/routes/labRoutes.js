@@ -5,6 +5,7 @@ const {
     getLabs,
     getLabById,
     evaluateLabAnswer,
+    completeCommandObjective,
     resetLabProgress,
     createLab,
     updateLab,
@@ -19,6 +20,7 @@ const { protect, adminOnly } = require("../middleware/authMiddleware");
 router.get("/", protect, getLabs);
 router.get("/:id", protect, getLabById);
 router.post("/:id/evaluate", protect, evaluateLabAnswer);
+router.post("/:id/complete-command", protect, completeCommandObjective);
 router.post("/:id/reset", protect, resetLabProgress);
 
 // ======================================================

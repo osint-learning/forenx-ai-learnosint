@@ -801,7 +801,133 @@ const deleteLab = asyncHandler(async (req, res) => {
 // EXPORTS
 // ======================================================
 
+
+// ======================================================
+// COMPLETE COMMAND OBJECTIVE GENERICALLY
+// ======================================================
+
+const completeCommandObjective = asyncHandler(async (req, res) => {
+    const { command, output } = req.body;
+    const labId = req.params.id;
+
+    if (!command || typeof command !== 'string') {
+        return res.status(400).json({
+            success: false,
+            message: 'Command is required'
+        });
+    }
+
+    const lab = await Lab.findOne({
+        _id: labId,
+        isActive: true,
+    });
+
+    if (!lab) {
+        return res.status(404).json({
+            success: false,
+            message: 'Lab not found'
+        });
+    }
+
+    const cleanCmd = command.trim().toLowerCase();
+    const isUtilityOrHelp =
+        cleanCmd === 'help' ||
+        cleanCmd === 'clear' ||
+        cleanCmd === 'sysinfo' ||
+        /(--help|-h|-help)/i.test(cleanCmd);
+
+    if (isUtilityOrHelp) {
+        return res.status(400).json({
+            success: false,
+            message: 'Utility and help commands do not complete mission objectives.'
+        });
+    }
+
+    const reqCmd = String(lab.requiredCommand || '').trim().toLowerCase();
+    const reqTokens = reqCmd.split(/s+/);
+    const reqTool = reqTokens[0] || '';
+    const labTool = String(lab.tool || '').trim().toLowerCase();
+    const cmdTokens = cleanCmd.split(/s+/);
+    const cmdTool = cmdTokens[0] || '';
+
+    // Generic match logic for any tool / requiredCommand
+    let isMatch = false;
+    if (reqCmd && cleanCmd === reqCmd) {
+        isMatch = true;
+    } else if (reqCmd && cleanCmd.startsWith(reqCmd)) {
+        isMatch = true;
+    } else if (reqTool && cmdTool === reqTool) {
+        isMatch = true;
+    } else if (labTool && (cmdTool === labTool || labTool.includes(cmdTool) || cmdTool.includes(labTool))) {
+        isMatch = true;
+    }
+
+    if (!isMatch) {
+        return res.status(400).json({
+            success: false,
+            message: 'Executed command does not match the required mission tool.'
+        });
+    }
+
+    // Find or create progress record
+    let progress = await LabProgress.findOne({
+        user: req.user._id,
+        lab: lab._id,
+    });
+
+    if (!progress) {
+        progress = await LabProgress.create({
+            user: req.user._id,
+            lab: lab._id,
+            objectives: [],
+        });
+    }
+
+    // Find command objective (usually index 0 or type === 'command')
+    let commandObjIndex = lab.objectives.findIndex(obj => obj.type === 'command');
+    if (commandObjIndex === -1) {
+        commandObjIndex = 0;
+    }
+
+    let objProg = progress.objectives.find(item => item.objectiveIndex === commandObjIndex);
+    if (!objProg) {
+        progress.objectives.push({
+            objectiveIndex: commandObjIndex,
+            completed: true,
+            answer: command.trim()
+        });
+    } else {
+        objProg.completed = true;
+        objProg.answer = command.trim();
+    }
+
+    // Check if all objectives completed
+    const allIndexes = lab.objectives.map((_, idx) => idx);
+    const allCompleted = allIndexes.every(idx => {
+        const item = progress.objectives.find(p => p.objectiveIndex === idx);
+        return item?.completed === true;
+    });
+
+    if (allCompleted) {
+        progress.completed = true;
+        progress.completedAt = new Date();
+    }
+
+    await progress.save();
+
+    res.json({
+        success: true,
+        message: 'Command objective completed successfully.',
+        progress: {
+            completed: progress.completed,
+            objectives: progress.objectives,
+            completedObjectives: progress.objectives.filter(i => i.completed).length,
+        }
+    });
+});
+
 module.exports = {
+    completeCommandObjective,
     getLabs,
     getLabById,
     evaluateLabAnswer,

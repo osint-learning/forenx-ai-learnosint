@@ -4,6 +4,7 @@ const { askOllama } = require("../services/ai/ollamaService");
 const Tool = require("../models/Tool");
 const Lab = require("../models/Lab");
 const LabProgress = require("../models/LabProgress");
+const Quiz = require("../models/Quiz");
 
 /*
 |--------------------------------------------------------------------------
@@ -532,63 +533,156 @@ Return exactly this JSON structure:
 
     /*
     |--------------------------------------------------------------------------
-    | Ask ForenX AI
+    | Grounded Fallback Builder
     |--------------------------------------------------------------------------
     */
 
-    const result = await askOllama(prompt, null, {
-        lightweight: true,
-        numPredict: 300,
-        temperature: 0.1,
-        timeout: 120000,
-        format: "json"
-    });
+    const buildFallbackRecommendations = () => {
+        const defaultReasons = {
+            subdomain: "High-value tool for discovering and mapping active subdomains and DNS records.",
+            email: "Effective for identifying associated email addresses and organizational accounts.",
+            username: "Specialized in correlating usernames across digital platforms and profiles.",
+            phone: "Useful for parsing phone number intelligence and carrier attribution.",
+            metadata: "Designed for extracting hidden EXIF data, timestamps, and document metadata.",
+            whois: "Primary tool for querying domain registrar, ownership, and nameserver records.",
+            technology: "Ideal for fingerprinting server frameworks, CMS, and web technologies.",
+            general: "Solid general-purpose OSINT tool suited for exploring target intelligence."
+        };
+
+        const intentSteps = {
+            subdomain: [
+                "Map root domain DNS records and authoritative nameservers.",
+                "Execute passive and active subdomain enumeration across target zones.",
+                "Correlate discovered subdomains to identify exposed service endpoints."
+            ],
+            email: [
+                "Search domain-associated email addresses using search engine indexers and breach archives.",
+                "Verify email syntax, MX record deliverability, and account existence.",
+                "Cross-reference valid emails to uncover associated user personas."
+            ],
+            username: [
+                "Perform cross-platform username enumeration across major networks and forums.",
+                "Inspect matched profiles for profile pictures, bios, and unique identifiers.",
+                "Correlate account creation dates and activity timelines."
+            ],
+            phone: [
+                "Format number into international E.164 standard.",
+                "Check carrier, country, and line type (mobile/VoIP/landline).",
+                "Search social footprints and public caller directories for owner intelligence."
+            ],
+            metadata: [
+                "Inspect file headers and EXIF data for device details and timestamps.",
+                "Extract GPS coordinates if embedded in imagery.",
+                "Correlate document author tags and software revision history."
+            ],
+            whois: [
+                "Query authoritative WHOIS database for registrar and registration dates.",
+                "Inspect privacy protection layers and historical DNS records.",
+                "Identify associated registrant emails or organizational contacts."
+            ],
+            technology: [
+                "Analyze HTTP response headers and SSL certificates for server signatures.",
+                "Fingerprint client-side JavaScript libraries and CMS frameworks.",
+                "Map exposed API endpoints and third-party integrations."
+            ],
+            general: [
+                "Define target scope and gather preliminary passive intelligence.",
+                "Run specialized OSINT tools against identified target parameters.",
+                "Correlate findings and document evidence systematically."
+            ]
+        };
+
+        const fallbackItems = selectedTools.map((tool) => ({
+            tool: tool.name,
+            name: tool.name,
+            category: tool.category || "OSINT",
+            reason: tool.shortDescription || defaultReasons[detectedIntent] || defaultReasons.general,
+            difficulty: tool.difficulty || "Beginner",
+            command: tool.syntax || (Array.isArray(tool.commands) && tool.commands[0]?.command) || undefined,
+        }));
+
+        const fallbackSteps = intentSteps[detectedIntent] || intentSteps.general;
+
+        return {
+            recommendations: fallbackItems,
+            investigationOrder: fallbackSteps,
+        };
+    };
 
 
     /*
     |--------------------------------------------------------------------------
-    | Handle AI error
+    | Ask ForenX AI (with Grounded Catalogue Fallback)
     |--------------------------------------------------------------------------
     */
 
-    if (!result.success) {
-        return res.status(503).json({
-            success: false,
-            message: result.message,
-        });
-    }
-
-    let recommendation;
-
+    let result;
     try {
-        recommendation = JSON.parse(result.response);
-    } catch (error) {
-        return res.status(502).json({
-            success: false,
-            message: "AI returned invalid tool recommendation JSON.",
-            rawResponse: result.response,
+        result = await askOllama(prompt, null, {
+            lightweight: true,
+            numPredict: 300,
+            temperature: 0.1,
+            timeout: 120000,
+            format: "json"
         });
+    } catch (err) {
+        result = {
+            success: false,
+            message: err.message || "Unable to connect to Ollama.",
+        };
     }
 
-    if (
-        !recommendation ||
-        !Array.isArray(recommendation.recommendations) ||
-        !Array.isArray(recommendation.investigationOrder)
-    ) {
-        return res.status(502).json({
-            success: false,
-            message: "AI returned an invalid tool recommendation format.",
-            rawResponse: result.response,
-        });
+    let recommendation = null;
+    let isFallback = false;
+
+    if (result && result.success && result.response) {
+        try {
+            const parsed = JSON.parse(result.response);
+            if (
+                parsed &&
+                Array.isArray(parsed.recommendations) &&
+                parsed.recommendations.length > 0
+            ) {
+                const mappedRecommendations = parsed.recommendations
+                    .map((item) => {
+                        const toolName = item.tool || item.name || "";
+                        const matchedDbTool = tools.find(
+                            (t) => t.name.toLowerCase() === toolName.toLowerCase()
+                        );
+                        return {
+                            tool: toolName,
+                            name: toolName,
+                            category: item.category || matchedDbTool?.category || "OSINT",
+                            reason: item.reason || item.description || matchedDbTool?.shortDescription || "",
+                            difficulty: item.difficulty || matchedDbTool?.difficulty || "Beginner",
+                            command: matchedDbTool?.syntax || (Array.isArray(matchedDbTool?.commands) && matchedDbTool.commands[0]?.command) || undefined,
+                        };
+                    })
+                    .filter((item) => item.name && item.reason);
+
+                if (mappedRecommendations.length > 0) {
+                    recommendation = {
+                        recommendations: mappedRecommendations,
+                        investigationOrder: Array.isArray(parsed.investigationOrder) && parsed.investigationOrder.length > 0
+                            ? parsed.investigationOrder
+                            : buildFallbackRecommendations().investigationOrder,
+                    };
+                }
+            }
+        } catch (parseError) {
+            console.warn("[AI Tool Recommendation] Ollama JSON parse failed:", parseError.message);
+        }
     }
 
-    recommendation.recommendations = recommendation.recommendations
-        .map((item) => ({
-            tool: item.tool,
-            reason: item.reason || item.description || "",
-            difficulty: item.difficulty,
-        }))
-        .filter((item) => item.tool && item.reason);
+    if (!recommendation) {
+        isFallback = true;
+        console.warn(
+            "[AI Tool Recommendation] Ollama unavailable:",
+            result?.message || "Using grounded catalogue fallback."
+        );
+        recommendation = buildFallbackRecommendations();
+    }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -602,11 +696,16 @@ Return exactly this JSON structure:
         detectedIntent,
         recommendations: recommendation.recommendations,
         investigationOrder: recommendation.investigationOrder,
-        model: result.model,
+        model: isFallback ? "grounded-catalogue-fallback" : (result?.model || "qwen3:4b"),
         availableToolCount: tools.length,
         analysedToolCount: selectedTools.length,
         analysedTools: selectedTools.map((tool) => tool.name),
-        createdAt: result.createdAt,
+        aiGenerated: !isFallback,
+        fallback: isFallback,
+        message: isFallback
+            ? "AI service temporarily unavailable. Recommendations generated from the OSINT tool catalogue."
+            : undefined,
+        createdAt: result?.createdAt || new Date().toISOString(),
     });
 });
 
@@ -988,11 +1087,8 @@ const personalizedLearningRecommendations = asyncHandler(
         const toolCatalogue = tools.map((tool) => ({
             name: tool.name,
             category: tool.category,
-            description: tool.shortDescription || "",
-            purpose: tool.purpose || "",
-            whenToUse: tool.whenToUse || "",
             difficulty: tool.difficulty || "Beginner",
-            tags: tool.tags || [],
+            purpose: (tool.shortDescription || tool.purpose || "").slice(0, 100),
         }));
 
 
@@ -1243,26 +1339,18 @@ IMPORTANT:
 
 /*
 |--------------------------------------------------------------------------
-| AI Quiz Generation
+| AI Dynamic Quiz Generation
 |--------------------------------------------------------------------------
-| Phase 2 - Feature 16
+| Phase 2 - Feature 15 (Optimized for Local qwen3:4b)
 |--------------------------------------------------------------------------
 */
 
 const generateAIQuiz = asyncHandler(async (req, res) => {
-
     const {
         tool,
         difficulty = "Beginner",
-        questionCount = 5,
+        count = 5,
     } = req.body || {};
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validate input
-    |--------------------------------------------------------------------------
-    */
 
     if (!tool || typeof tool !== "string") {
         return res.status(400).json({
@@ -1271,44 +1359,14 @@ const generateAIQuiz = asyncHandler(async (req, res) => {
         });
     }
 
-
-    const allowedDifficulties = [
-        "Beginner",
-        "Intermediate",
-        "Advanced",
-    ];
-
-    if (!allowedDifficulties.includes(difficulty)) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid difficulty level.",
-        });
-    }
-
-
-    const count = Math.min(
-        Math.max(parseInt(questionCount, 10) || 5, 1),
-        10
-    );
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Find actual tool from MongoDB
-    |--------------------------------------------------------------------------
-    */
-
     const toolData = await Tool.findOne({
         name: {
             $regex: `^${tool.trim()}$`,
             $options: "i",
         },
     })
-        .select(
-            "name category shortDescription description purpose whenToUse difficulty syntax commands examples sampleOutput outputExplanation advantages limitations bestPractices tags relatedTools"
-        )
+        .select("name category shortDescription difficulty syntax commands")
         .lean();
-
 
     if (!toolData) {
         return res.status(404).json({
@@ -1317,223 +1375,185 @@ const generateAIQuiz = asyncHandler(async (req, res) => {
         });
     }
 
+    const buildFallbackQuiz = async () => {
+        let dbQuestions = [];
+        try {
+            dbQuestions = await Quiz.find({ tool: toolData._id }).lean();
+        } catch (dbErr) {
+            console.warn("[AI Quiz Generation] DB Quiz lookup error:", dbErr.message);
+        }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Prepare tool knowledge for AI
-    |--------------------------------------------------------------------------
-    */
+        if (dbQuestions && dbQuestions.length > 0) {
+            const shuffled = [...dbQuestions]
+                .sort(() => Math.random() - 0.5)
+                .slice(0, count)
+                .map((q) => {
+                    const rawIdx = q.correctAnswerIndex;
+                    const cleanedIdx = typeof rawIdx === "number" ? rawIdx : parseInt(String(rawIdx).replace(/\D/g, ""), 10);
+                    return {
+                        question: q.question,
+                        options: q.options || [],
+                        correctAnswerIndex: Number.isInteger(cleanedIdx) && cleanedIdx >= 0 && cleanedIdx < 4 ? cleanedIdx : 0,
+                        explanation: q.explanation || `Standard knowledge question for ${toolData.name}.`,
+                    };
+                });
+            if (shuffled.length > 0) return shuffled;
+        }
 
-    const toolKnowledge = {
-        name: toolData.name,
-        category: toolData.category,
-        description: toolData.shortDescription || "",
-        detailedDescription: toolData.description || "",
-        purpose: toolData.purpose || "",
-        whenToUse: toolData.whenToUse || "",
-        difficulty: toolData.difficulty || "Beginner",
-        syntax: toolData.syntax || "",
-        commands: toolData.commands || [],
-        examples: toolData.examples || [],
-        sampleOutput: toolData.sampleOutput || "",
-        outputExplanation: toolData.outputExplanation || "",
-        advantages: toolData.advantages || [],
-        limitations: toolData.limitations || [],
-        bestPractices: toolData.bestPractices || [],
-        tags: toolData.tags || [],
-        relatedTools: toolData.relatedTools || [],
+        return [
+            {
+                question: `What is the primary function of ${toolData.name}?`,
+                options: [
+                    toolData.shortDescription || "Conduct specialized OSINT investigation",
+                    "Perform local OS kernel debugging",
+                    "Conduct automated hardware penetration testing",
+                    "Manage corporate firewall routing tables"
+                ],
+                correctAnswerIndex: 0,
+                explanation: `${toolData.name} is designed for ${toolData.shortDescription || "OSINT investigations"}.`
+            },
+            {
+                question: `Which investigation category does ${toolData.name} belong to?`,
+                options: [
+                    toolData.category || "OSINT",
+                    "Physical Access Exploitation",
+                    "Binary Reverse Engineering",
+                    "Radio Frequency Interception"
+                ],
+                correctAnswerIndex: 0,
+                explanation: `${toolData.name} is categorized under ${toolData.category || "OSINT"}.`
+            },
+            {
+                question: `What is the recommended difficulty level for using ${toolData.name}?`,
+                options: [
+                    toolData.difficulty || "Beginner",
+                    "Expert Forensics Only",
+                    "Restricted Military",
+                    "Enterprise Kernel"
+                ],
+                correctAnswerIndex: 0,
+                explanation: `${toolData.name} is rated as ${toolData.difficulty || "Beginner"} level in ForenX.`
+            },
+            {
+                question: `How should intelligence collected from ${toolData.name} be handled?`,
+                options: [
+                    "Correlated with other OSINT data sources for verification",
+                    "Immediately discarded without logging",
+                    "Assumed always 100% complete and definitive",
+                    "Published publicly without authorization"
+                ],
+                correctAnswerIndex: 0,
+                explanation: "OSINT findings should always be verified and correlated across multiple sources."
+            },
+            {
+                question: `What is the most effective way to practice using ${toolData.name}?`,
+                options: [
+                    "Practice structured objectives inside ForenX interactive labs",
+                    "Execute unconstrained scans against unauthorized third parties",
+                    "Only read documentation without running commands",
+                    "Rely solely on automated third-party summaries"
+                ],
+                correctAnswerIndex: 0,
+                explanation: "Hands-on guided practice in simulated labs builds reliable investigative skills."
+            }
+        ];
     };
 
+    const keyCommands = (toolData.commands || []).slice(0, 2).map((c) => c.title || c.command || "").filter(Boolean);
 
-    /*
-    |--------------------------------------------------------------------------
-    | AI Prompt
-    |--------------------------------------------------------------------------
-    */
+    const prompt = `You are ForenX AI. Generate a ${difficulty}-level 5-question multiple-choice quiz for the OSINT tool: ${toolData.name} (${toolData.category}).
+Description: ${toolData.shortDescription || "OSINT investigation tool"}.
+Key Commands: ${keyCommands.join(", ") || "Standard tool commands"}.
 
-    const prompt = `
-You are ForenX AI, an OSINT learning assistant.
+RULES:
+- Return valid JSON only.
+- Exactly ${count} questions.
+- Short question text (<15 words).
+- Exactly 4 short options per question.
+- correctAnswerIndex (0, 1, 2, or 3).
+- 1 concise sentence explanation.
 
-Generate a multiple-choice quiz for a cybersecurity student
-learning the following OSINT tool.
-
-TOOL INFORMATION:
-${JSON.stringify(toolKnowledge, null, 2)}
-
-QUIZ SETTINGS:
-Difficulty: ${difficulty}
-Number of questions: ${count}
-
-REQUIREMENTS:
-
-1. Generate exactly ${count} questions.
-2. Questions must test understanding of the actual tool.
-3. Use ONLY the information provided about the tool.
-4. Do not invent tool features, commands, options, or capabilities.
-5. Each question must have exactly 4 options.
-6. There must be exactly one correct answer.
-7. The correctAnswerIndex must be 0, 1, 2, or 3.
-8. Provide a clear explanation for the correct answer.
-9. Match the requested difficulty.
-10. Questions should be useful for learning OSINT.
-11. Avoid ambiguous questions.
-12. Do not reveal the correct answer outside correctAnswerIndex.
-13. Do not generate questions about tools that are not the selected tool.
-
-Return ONLY valid JSON.
-
-Use exactly this structure:
-
+JSON format:
 {
-  "tool": "exact tool name",
-  "difficulty": "${difficulty}",
   "questions": [
     {
       "question": "question text",
-      "options": [
-        "option 1",
-        "option 2",
-        "option 3",
-        "option 4"
-      ],
+      "options": ["A", "B", "C", "D"],
       "correctAnswerIndex": 0,
       "explanation": "short explanation"
     }
   ]
-}
+}`;
 
-IMPORTANT:
-- The tool name must exactly match the selected ForenX tool.
-- Generate exactly ${count} questions.
-- Each question must contain exactly 4 options.
-- Return JSON only.
-`;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ask ForenX AI
-    |--------------------------------------------------------------------------
-    */
-
-    const result = await askOllama(prompt, null, {
-        lightweight: true,
-        numPredict: 700,
-        temperature: 0.2,
-        timeout: 120000,
-        format: "json",
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Handle AI error
-    |--------------------------------------------------------------------------
-    */
-
-    if (!result.success) {
-        return res.status(503).json({
-            success: false,
-            message: result.message,
-        });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Parse AI response
-    |--------------------------------------------------------------------------
-    */
-
-    let quiz;
-
+    let result;
     try {
-        quiz = JSON.parse(result.response);
-    }
-    catch (error) {
-        return res.status(502).json({
-            success: false,
-            message: "AI returned invalid quiz JSON.",
-            rawResponse: result.response,
+        result = await askOllama(prompt, null, {
+            lightweight: true,
+            numPredict: 550,
+            temperature: 0.1,
+            timeout: 120000,
+            format: "json",
         });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validate quiz
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !quiz ||
-        !Array.isArray(quiz.questions) ||
-        quiz.questions.length !== count
-    ) {
-        return res.status(502).json({
+    } catch (err) {
+        result = {
             success: false,
-            message: "AI returned an invalid quiz format.",
-            rawResponse: result.response,
-        });
+            message: err.message || "Unable to contact Ollama",
+        };
     }
 
+    let validQuestions = null;
+    let isFallback = false;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate every question
-    |--------------------------------------------------------------------------
-    */
+    if (result && result.success && result.response) {
+        try {
+            const parsed = JSON.parse(result.response);
+            if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+                const cleaned = parsed.questions
+                    .map((q) => {
+                        const rawIdx = q.correctAnswerIndex;
+                        const cleanedIdx = typeof rawIdx === "number"
+                            ? rawIdx
+                            : parseInt(String(rawIdx).replace(/\D/g, ""), 10);
 
-    for (const question of quiz.questions) {
+                        return {
+                            question: typeof q.question === "string" ? q.question.trim() : "",
+                            options: Array.isArray(q.options) && q.options.length === 4 ? q.options.map((o) => String(o).trim()) : null,
+                            correctAnswerIndex: Number.isInteger(cleanedIdx) && cleanedIdx >= 0 && cleanedIdx < 4 ? cleanedIdx : 0,
+                            explanation: typeof q.explanation === "string" ? q.explanation.trim() : `Key concept for ${toolData.name}.`,
+                        };
+                    })
+                    .filter((q) => q.question && q.options && q.options.length === 4);
 
-        if (
-            !question ||
-            typeof question.question !== "string" ||
-            !Array.isArray(question.options) ||
-            question.options.length !== 4 ||
-            !Number.isInteger(question.correctAnswerIndex) ||
-            question.correctAnswerIndex < 0 ||
-            question.correctAnswerIndex > 3 ||
-            typeof question.explanation !== "string"
-        ) {
-            return res.status(502).json({
-                success: false,
-                message: "AI generated an invalid quiz question.",
-                rawResponse: result.response,
-            });
+                if (cleaned.length >= 3) {
+                    validQuestions = cleaned.slice(0, count);
+                }
+            }
+        } catch (parseErr) {
+            console.warn("[AI Quiz Generation] JSON parse error:", parseErr.message);
         }
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Return generated quiz
-    |--------------------------------------------------------------------------
-    */
+    if (!validQuestions || validQuestions.length === 0) {
+        isFallback = true;
+        console.warn("[AI Quiz Generation] Ollama failed or unparseable. Using grounded quiz fallback:", result?.message);
+        validQuestions = await buildFallbackQuiz();
+    }
 
     res.json({
         success: true,
-
         quiz: {
             tool: toolData.name,
             toolId: toolData._id,
             difficulty,
-            questions: quiz.questions,
+            questions: validQuestions,
         },
-
-        model: result.model,
-        createdAt: result.createdAt,
+        aiGenerated: !isFallback,
+        fallback: isFallback,
+        model: isFallback ? "grounded-standard-quiz-fallback" : (result?.model || "qwen3:4b"),
+        createdAt: result?.createdAt || new Date().toISOString(),
     });
 });
 
-
-/*
-|--------------------------------------------------------------------------
-| AI Quiz Evaluation
-|--------------------------------------------------------------------------
-| Phase 2 - Feature 16
-|--------------------------------------------------------------------------
-*/
 
 const evaluateAIQuiz = asyncHandler(async (req, res) => {
 
@@ -1619,11 +1639,20 @@ const evaluateAIQuiz = asyncHandler(async (req, res) => {
         const correctAnswerIndex =
             Number(question.correctAnswerIndex);
 
-        const selectedAnswerIndex =
-            Number(selectedAnswer);
+        let selectedAnswerIndex =
+            typeof selectedAnswer === "number"
+                ? selectedAnswer
+                : !isNaN(Number(selectedAnswer))
+                ? Number(selectedAnswer)
+                : -1;
+
+        if (selectedAnswerIndex === -1 && typeof selectedAnswer === "string" && Array.isArray(question.options)) {
+            selectedAnswerIndex = question.options.indexOf(selectedAnswer);
+        }
 
         const isCorrect =
             Number.isInteger(selectedAnswerIndex) &&
+            selectedAnswerIndex >= 0 &&
             selectedAnswerIndex === correctAnswerIndex;
 
         if (isCorrect) {
@@ -1751,72 +1780,57 @@ Return JSON only.
 
     /*
     |--------------------------------------------------------------------------
-    | Ask ForenX AI
+    | Ask ForenX AI (with Grounded Evaluation Fallback)
     |--------------------------------------------------------------------------
     */
 
-    const aiResult = await askOllama(prompt, null, {
-        lightweight: true,
-        numPredict: 300,
-        temperature: 0.1,
-        timeout: 120000,
-        format: "json",
-    });
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Handle AI failure
-    |--------------------------------------------------------------------------
-    */
-
-    if (!aiResult.success) {
-        return res.status(503).json({
-            success: false,
-            message: aiResult.message,
-        });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Parse AI feedback
-    |--------------------------------------------------------------------------
-    */
-
-    let feedback;
-
+    let aiResult;
     try {
-        feedback = JSON.parse(aiResult.response);
-    }
-    catch (error) {
-        return res.status(502).json({
-            success: false,
-            message: "AI returned invalid quiz feedback JSON.",
-            rawResponse: aiResult.response,
+        aiResult = await askOllama(prompt, null, {
+            lightweight: true,
+            numPredict: 300,
+            temperature: 0.1,
+            timeout: 120000,
+            format: "json",
         });
+    } catch (err) {
+        aiResult = {
+            success: false,
+            message: err.message || "Failed to contact Ollama",
+        };
     }
 
+    let feedback = null;
+    let isFallback = false;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Validate AI feedback
-    |--------------------------------------------------------------------------
-    */
+    if (aiResult && aiResult.success && aiResult.response) {
+        try {
+            const parsed = JSON.parse(aiResult.response);
+            if (
+                parsed &&
+                typeof parsed.summary === "string" &&
+                Array.isArray(parsed.strengths)
+            ) {
+                feedback = parsed;
+            }
+        } catch (parseErr) {
+            console.warn("[AI Quiz Evaluation] JSON parse error:", parseErr.message);
+        }
+    }
 
-    if (
-        !feedback ||
-        typeof feedback.summary !== "string" ||
-        !Array.isArray(feedback.strengths) ||
-        !Array.isArray(feedback.areasToImprove) ||
-        !Array.isArray(feedback.learningAdvice) ||
-        typeof feedback.nextAction !== "string"
-    ) {
-        return res.status(502).json({
-            success: false,
-            message: "AI returned an invalid quiz feedback format.",
-            rawResponse: aiResult.response,
-        });
+    if (!feedback) {
+        isFallback = true;
+        console.warn("[AI Quiz Evaluation] Ollama unavailable, using deterministic feedback:", aiResult?.message);
+        feedback = {
+            summary: `You scored ${score} out of ${totalQuestions} (${percentage}%). ${percentage >= 70 ? "Solid knowledge demonstrated for " + toolData.name + "." : "Review the key capabilities and syntax for " + toolData.name + "."}`,
+            strengths: results.filter(r => r.isCorrect).map(r => `Correctly answered: "${r.question}"`),
+            areasToImprove: results.filter(r => !r.isCorrect).map(r => `Review concept: "${r.question}"`),
+            learningAdvice: [
+                `Practice with ${toolData.name} in the ForenX practice labs.`,
+                `Review general syntax and common commands for ${toolData.name}.`
+            ],
+            nextAction: `Continue hands-on exploration of ${toolData.name}.`
+        };
     }
 
 
@@ -1828,6 +1842,22 @@ Return JSON only.
 
     res.json({
         success: true,
+
+        tool: toolData.name,
+        score: {
+            totalQuestions,
+            correctAnswers: score,
+            percentage,
+            passed: percentage >= 70,
+        },
+        feedback: {
+            overallPerformance: feedback.summary || performance,
+            strengths: Array.isArray(feedback.strengths) ? feedback.strengths : [],
+            misconceptions: Array.isArray(feedback.areasToImprove) ? feedback.areasToImprove : [],
+            nextStudySteps: Array.isArray(feedback.learningAdvice)
+                ? feedback.learningAdvice
+                : (feedback.nextAction ? [feedback.nextAction] : []),
+        },
 
         evaluation: {
             tool: toolData.name,
@@ -1854,19 +1884,18 @@ Return JSON only.
 */
 
 const evaluateAILab = asyncHandler(async (req, res) => {
-
     const {
         labId,
-        objectiveResults,
+        commandHistory = [],
     } = req.body || {};
 
+    let { objectiveResults } = req.body || {};
 
     /*
     |--------------------------------------------------------------------------
     | Validate input
     |--------------------------------------------------------------------------
     */
-
     if (!labId) {
         return res.status(400).json({
             success: false,
@@ -1874,23 +1903,11 @@ const evaluateAILab = asyncHandler(async (req, res) => {
         });
     }
 
-    if (
-        !Array.isArray(objectiveResults) ||
-        objectiveResults.length === 0
-    ) {
-        return res.status(400).json({
-            success: false,
-            message: "Objective results are required.",
-        });
-    }
-
-
     /*
     |--------------------------------------------------------------------------
     | Get lab
     |--------------------------------------------------------------------------
     */
-
     const lab = await Lab.findOne({
         _id: labId,
         isActive: true,
@@ -1898,32 +1915,7 @@ const evaluateAILab = asyncHandler(async (req, res) => {
         .select(
             "title description tool category difficulty target missionBrief requiredCommand objectives hints xpReward"
         )
-    .lean();
-
-
-    // ======================================================
-    // GET ACTUAL TOOL COMMANDS
-    // ======================================================
-
-    const toolData = await Tool.findOne({
-        name: {
-            $regex: `^${lab.tool.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-            $options: "i",
-        },
-    })
-        .select("name commands syntax")
         .lean();
-
-
-    const allowedCommands = [
-        ...(toolData?.commands || []).map(
-            item => item.command
-        ),
-        ...(toolData?.syntax
-            ? [toolData.syntax]
-            : []),
-    ].filter(Boolean);
-
 
     if (!lab) {
         return res.status(404).json({
@@ -1932,341 +1924,233 @@ const evaluateAILab = asyncHandler(async (req, res) => {
         });
     }
 
-
     /*
     |--------------------------------------------------------------------------
-    | Get student's lab progress
+    | Get student's lab progress & ensure objectiveResults
     |--------------------------------------------------------------------------
     */
-
     const progress = await LabProgress.findOne({
         user: req.user._id,
         lab: lab._id,
     }).lean();
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Prepare lab information
-    |--------------------------------------------------------------------------
-    */
-
-    const labInformation = {
-        title: lab.title,
-        description: lab.description || "",
-        tool: lab.tool,
-        category: lab.category || "OSINT",
-        difficulty: lab.difficulty,
-        target: lab.target,
-        missionBrief: lab.missionBrief,
-        requiredCommand: lab.requiredCommand,
-        objectives: lab.objectives.map(
-            (objective, index) => ({
+    if (!Array.isArray(objectiveResults) || objectiveResults.length === 0) {
+        objectiveResults = (lab.objectives || []).map((objective, index) => {
+            const savedObj = progress?.objectives?.find(
+                item => item.objectiveIndex === index
+            );
+            return {
                 objectiveIndex: index,
                 question: objective.question,
                 type: objective.type,
-                expectedField: objective.expectedField,
-            })
-        ),
-    };
+                correct: savedObj?.completed === true,
+                completed: savedObj?.completed === true,
+                answer: savedObj?.answer || "",
+            };
+        });
+    } else {
+        // Normalize objective results
+        objectiveResults = objectiveResults.map((item, index) => ({
+            objectiveIndex: item.objectiveIndex !== undefined ? item.objectiveIndex : index,
+            question: item.question || lab.objectives?.[index]?.question || ("Objective " + (index + 1)),
+            type: item.type || lab.objectives?.[index]?.type || 'analysis',
+            correct: item.correct === true || item.completed === true,
+            completed: item.correct === true || item.completed === true,
+            answer: item.answer || "",
+        }));
+    }
 
+    // ======================================================
+    // GET ACTUAL TOOL COMMANDS
+    // ======================================================
+    let toolData = null;
+    try {
+        toolData = await Tool.findOne({
+            name: { $regex: new RegExp("^" + lab.tool + "$", "i") },
+        })
+            .select("name commands syntax")
+            .lean();
+    } catch (e) {
+        // ignore regex error
+    }
+
+    const allowedCommands = [
+        ...(toolData?.commands || []).map(item => item.command),
+        ...(toolData?.syntax ? [toolData.syntax] : []),
+    ].filter(Boolean);
 
     /*
     |--------------------------------------------------------------------------
-    | Prepare student progress
+    | Calculate performance metrics
     |--------------------------------------------------------------------------
     */
+    const totalObjectives = (lab.objectives || []).length || objectiveResults.length || 1;
+    const completedObjectives = objectiveResults.filter(
+        item => item && (item.correct === true || item.completed === true)
+    ).length;
 
-    const studentProgress = {
-        completed: progress?.completed || false,
+    const percentage = Math.round((completedObjectives / totalObjectives) * 100);
 
-        objectives:
-            progress?.objectives || [],
+    let performanceLevel = "Needs Improvement";
+    if (percentage >= 90) {
+        performanceLevel = "Excellent";
+    } else if (percentage >= 75) {
+        performanceLevel = "Good";
+    } else if (percentage >= 50) {
+        performanceLevel = "Needs Practice";
+    }
 
-        xpAwarded:
-            progress?.xpAwarded || false,
-
-        startedAt:
-            progress?.startedAt || null,
-
-        completedAt:
-            progress?.completedAt || null,
+    const labInfo = {
+        id: lab._id.toString(),
+        title: lab.title,
+        tool: lab.tool,
+        difficulty: lab.difficulty,
+        target: lab.target,
+        totalObjectives,
+        completedObjectives,
+        percentage,
     };
-
 
     /*
     |--------------------------------------------------------------------------
-    | Calculate basic performance
+    | Deterministic Baseline Fallback Generator
     |--------------------------------------------------------------------------
     */
+    const generateDeterministicEvaluation = () => {
+        const completedList = objectiveResults.filter(o => o.correct || o.completed);
+        const pendingList = objectiveResults.filter(o => !o.correct && !o.completed);
 
-    const totalObjectives =
-        objectiveResults.length;
+        const strengths = [
+            "Targeted engagement with " + lab.tool + " against designated target " + lab.target + ".",
+            ...(completedList.map(o => "Successfully completed objective: \"" + o.question + "\"")),
+            ...(commandHistory.length > 0 ? ["Executed " + commandHistory.length + " investigation commands in the interactive terminal."] : [])
+        ];
 
-    const completedObjectives =
-        objectiveResults.filter(
-            item => item && item.correct === true
-        ).length;
-
-    const percentage =
-        Math.round(
-            (completedObjectives / totalObjectives) * 100
+        const areasForImprovement = pendingList.map(
+            o => "Objective remaining: \"" + o.question + "\". Analyze command output for required forensic artifacts."
         );
 
-
-    let performance = "Needs Improvement";
-
-    if (percentage >= 90) {
-        performance = "Excellent";
-    }
-    else if (percentage >= 75) {
-        performance = "Good";
-    }
-    else if (percentage >= 50) {
-        performance = "Needs Practice";
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | AI Prompt
-    |--------------------------------------------------------------------------
-    */
-
-    const prompt = `
-You are ForenX AI, an OSINT practice-lab mentor.
-
-Evaluate the student's performance in the following OSINT practice lab.
-
-LAB INFORMATION:
-${JSON.stringify(labInformation, null, 2)}
-
-AVAILABLE TOOL COMMANDS:
-${JSON.stringify(allowedCommands, null, 2)}
-
-STUDENT LAB PROGRESS:
-${JSON.stringify(studentProgress, null, 2)}
-
-OBJECTIVE RESULTS:
-${JSON.stringify(objectiveResults, null, 2)}
-
-PERFORMANCE:
-Completed objectives: ${completedObjectives}/${totalObjectives}
-Percentage: ${percentage}%
-Performance: ${performance}
-
-TASK:
-
-Provide personalized educational feedback about the student's lab attempt.
-
-You must:
-1. Explain the student's overall performance.
-2. Identify objectives completed correctly.
-3. Identify objectives that need improvement.
-4. Explain mistakes in beginner-friendly language.
-5. Give practical OSINT learning advice.
-6. Recommend what the student should investigate or practice next.
-7. Consider the lab difficulty.
-8. Base your feedback ONLY on the supplied lab information and results.
-9. Do not invent command output.
-10. Do not claim that a command was executed unless the supplied results explicitly show it.
-11. Do not change the correctness of the supplied objective results.
-12. Do not reveal hidden information that is not present in the supplied data.
-13. Never invent a command.
-14. Never invent command options or flags.
-15. Only mention commands or options that appear in AVAILABLE TOOL COMMANDS.
-16. If command-specific advice is not supported by AVAILABLE TOOL COMMANDS, give general guidance about inspecting the existing command output instead.
-17. Do not recommend modifying a command with an unsupported flag.
-
-Return ONLY valid JSON.
-
-Use exactly this structure:
-
-{
-  "summary": "short overall performance summary",
-  "strengths": [
-    "strength 1"
-  ],
-  "areasToImprove": [
-    "area 1"
-  ],
-  "objectiveFeedback": [
-    {
-      "objectiveIndex": 0,
-      "status": "Correct/Needs Improvement",
-      "feedback": "short explanation"
-    }
-  ],
-  "learningAdvice": [
-    "advice 1"
-  ],
-  "nextAction": "one immediate action"
-}
-
-IMPORTANT:
-- objectiveIndex must match the supplied objective index.
-- Do not invent objective indexes.
-- If there are no weaknesses, return an empty array for areasToImprove.
-- Return JSON only.
-`;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Ask ForenX AI
-    |--------------------------------------------------------------------------
-    */
-
-    const aiResult = await askOllama(
-        prompt,
-        null,
-        {
-            lightweight: true,
-            numPredict: 500,
-            temperature: 0.1,
-            timeout: 120000,
-            format: "json",
+        const detectedMistakes = [];
+        if (pendingList.length > 0 && commandHistory.length === 0) {
+            detectedMistakes.push("No commands executed yet. Run the required tool command (" + (lab.requiredCommand || lab.tool) + ") in the terminal.");
+        } else if (pendingList.length > 0) {
+            detectedMistakes.push("Some mission questions remain unanswered or require closer analysis of the output.");
         }
-    );
 
+        const nextSteps = [
+            pendingList.length > 0
+                ? "Review terminal output for " + lab.tool + " and submit answers for remaining questions."
+                : "Proceed to the next advanced OSINT practice lab or explore related intelligence tools.",
+            "Cross-correlate findings in the Investigation Workspace."
+        ];
+
+        const performanceSummary = percentage === 100
+            ? "Outstanding execution! All " + totalObjectives + " objectives for " + lab.title + " were completed accurately using " + lab.tool + "."
+            : percentage > 0
+            ? "Good progress. You completed " + completedObjectives + " of " + totalObjectives + " objectives (" + percentage + "%). Focus on analyzing the remaining data points from " + lab.tool + "."
+            : "Mission started. Execute the required command '" + (lab.requiredCommand || lab.tool) + "' and inspect the terminal output to answer objectives.";
+
+        const objectiveFeedback = objectiveResults.map(o => ({
+            objectiveIndex: o.objectiveIndex,
+            completed: o.correct || o.completed,
+            feedback: (o.correct || o.completed)
+                ? "Objective verified and completed accurately."
+                : "Objective pending. Inspect " + lab.tool + " output for '" + o.question + "'."
+        }));
+
+        return {
+            performanceSummary,
+            strengths: strengths.slice(0, 4),
+            areasForImprovement: areasForImprovement.slice(0, 3),
+            detectedMistakes: detectedMistakes.slice(0, 3),
+            nextSteps: nextSteps.slice(0, 3),
+            objectiveFeedback,
+        };
+    };
 
     /*
     |--------------------------------------------------------------------------
-    | Handle AI failure
+    | AI Prompt & Generation
     |--------------------------------------------------------------------------
     */
-
-    if (!aiResult.success) {
-        return res.status(503).json({
-            success: false,
-            message: aiResult.message,
-        });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Parse AI response
-    |--------------------------------------------------------------------------
-    */
-
-    let feedback;
+    const prompt = 
+"You are ForenX AI, an expert OSINT mission evaluator.\n" +
+"Evaluate the student's lab attempt for " + lab.title + " using " + lab.tool + " on target " + lab.target + ".\n\n" +
+"LAB OBJECTIVES & RESULTS:\n" +
+JSON.stringify(objectiveResults, null, 2) + "\n\n" +
+"COMMANDS EXECUTED:\n" +
+JSON.stringify(commandHistory, null, 2) + "\n\n" +
+"PERFORMANCE:\n" +
+"Completed: " + completedObjectives + "/" + totalObjectives + " (" + percentage + "%) - " + performanceLevel + "\n\n" +
+"Return ONLY valid JSON matching this exact structure:\n" +
+"{\n" +
+"  \"performanceSummary\": \"2-3 concise sentences summarizing student performance on this lab.\",\n" +
+"  \"strengths\": [\"specific strength 1\", \"specific strength 2\"],\n" +
+"  \"areasForImprovement\": [\"specific area 1\"],\n" +
+"  \"detectedMistakes\": [\"specific mistake if any\"],\n" +
+"  \"nextSteps\": [\"recommended next action 1\", \"recommended next action 2\"],\n" +
+"  \"objectiveFeedback\": [\n" +
+"    {\n" +
+"      \"objectiveIndex\": 0,\n" +
+"      \"completed\": true,\n" +
+"      \"feedback\": \"concise feedback\"\n" +
+"    }\n" +
+"  ]\n" +
+"}";
 
     try {
-        feedback = JSON.parse(
-            aiResult.response
-        );
-    }
-    catch (error) {
-        return res.status(502).json({
-            success: false,
-            message:
-                "AI returned invalid practice-lab feedback JSON.",
-            rawResponse:
-                aiResult.response,
-        });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validate AI feedback
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        !feedback ||
-        typeof feedback.summary !== "string" ||
-        !Array.isArray(feedback.strengths) ||
-        !Array.isArray(feedback.areasToImprove) ||
-        !Array.isArray(feedback.objectiveFeedback) ||
-        !Array.isArray(feedback.learningAdvice) ||
-        typeof feedback.nextAction !== "string"
-    ) {
-        return res.status(502).json({
-            success: false,
-            message:
-                "AI returned an invalid practice-lab feedback format.",
-            rawResponse:
-                aiResult.response,
-        });
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validate objective indexes
-    |--------------------------------------------------------------------------
-    */
-
-    const validObjectiveIndexes =
-        new Set(
-            objectiveResults.map(
-                item => Number(item.objectiveIndex)
-            )
+        const aiResult = await askOllama(
+            prompt,
+            null,
+            {
+                lightweight: true,
+                numPredict: 450,
+                temperature: 0.1,
+                timeout: 45000,
+                format: "json",
+            }
         );
 
+        if (aiResult.success && aiResult.response) {
+            try {
+                const parsed = JSON.parse(aiResult.response);
+                if (parsed && typeof parsed === 'object') {
+                    const evaluation = {
+                        performanceSummary: parsed.performanceSummary || parsed.summary || ("Lab evaluation completed with " + percentage + "% score."),
+                        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+                        areasForImprovement: Array.isArray(parsed.areasForImprovement) ? parsed.areasForImprovement : (Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove : []),
+                        detectedMistakes: Array.isArray(parsed.detectedMistakes) ? parsed.detectedMistakes : [],
+                        nextSteps: Array.isArray(parsed.nextSteps) ? parsed.nextSteps : (Array.isArray(parsed.learningAdvice) ? parsed.learningAdvice : []),
+                        objectiveFeedback: Array.isArray(parsed.objectiveFeedback) ? parsed.objectiveFeedback : [],
+                    };
 
-    const invalidFeedback =
-        feedback.objectiveFeedback.filter(
-            item =>
-                !item ||
-                !validObjectiveIndexes.has(
-                    Number(item.objectiveIndex)
-                )
-        );
-
-
-    if (invalidFeedback.length > 0) {
-        return res.status(502).json({
-            success: false,
-            message:
-                "AI returned feedback for an invalid objective.",
-            invalidFeedback,
-        });
+                    return res.json({
+                        success: true,
+                        lab: labInfo,
+                        evaluation,
+                        model: aiResult.model || "qwen3:4b",
+                        createdAt: aiResult.createdAt || new Date().toISOString(),
+                    });
+                }
+            } catch (pErr) {
+                console.warn("AI returned malformed JSON, falling back to deterministic evaluation:", pErr.message);
+            }
+        }
+    } catch (ollamaErr) {
+        console.warn("Ollama AI evaluation call failed, using fallback:", ollamaErr.message);
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Return AI evaluation
-    |--------------------------------------------------------------------------
-    */
-
-    res.json({
+    // Fallback if AI unavailable or timeout
+    const fallbackEval = generateDeterministicEvaluation();
+    return res.json({
         success: true,
-
-        evaluation: {
-            lab: {
-                id: lab._id,
-                title: lab.title,
-                tool: lab.tool,
-                difficulty: lab.difficulty,
-            },
-
-            performance: {
-                completedObjectives,
-                totalObjectives,
-                percentage,
-                level: performance,
-            },
-
-            feedback,
-        },
-
-        model: aiResult.model,
-
-        createdAt: aiResult.createdAt,
+        lab: labInfo,
+        evaluation: fallbackEval,
+        model: "forenx-expert-rules",
+        createdAt: new Date().toISOString(),
     });
 });
 
-/*
-|--------------------------------------------------------------------------
-| AI Investigation Hint
-|--------------------------------------------------------------------------
-| Phase 2 - Feature 19
-|--------------------------------------------------------------------------
-*/
 
 const generateAIHint = asyncHandler(async (req, res) => {
 
